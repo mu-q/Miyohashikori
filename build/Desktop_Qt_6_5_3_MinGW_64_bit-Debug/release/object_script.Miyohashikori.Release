@@ -1,0 +1,11 @@
+release/main.o
+release/mainwindow.o
+release/apppaths.o
+release/spritecatalog.o
+release/nullaisession.o
+release/characterspriteview.o
+release/moc_mainwindow.o
+release/moc_spritecatalog.o
+release/moc_iaisession.o
+release/moc_nullaisession.o
+release/moc_characterspriteview.o

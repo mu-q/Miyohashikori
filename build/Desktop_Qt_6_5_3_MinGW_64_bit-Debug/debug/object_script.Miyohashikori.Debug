@@ -1,0 +1,11 @@
+debug/main.o
+debug/mainwindow.o
+debug/apppaths.o
+debug/spritecatalog.o
+debug/nullaisession.o
+debug/characterspriteview.o
+debug/moc_mainwindow.o
+debug/moc_spritecatalog.o
+debug/moc_iaisession.o
+debug/moc_nullaisession.o
+debug/moc_characterspriteview.o
