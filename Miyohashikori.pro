@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -8,16 +8,26 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     core/apppaths.cpp \
+    core/config/appconfig.cpp \
+    core/config/configmanager.cpp \
     core/spritecatalog.cpp \
+    core/ai/chathistory.cpp \
+    core/ai/emotionparser.cpp \
     core/ai/nullaisession.cpp \
+    core/ai/openaichatsession.cpp \
     ui/characterspriteview.cpp
 
 HEADERS += \
     mainwindow.h \
     core/apppaths.h \
+    core/config/appconfig.h \
+    core/config/configmanager.h \
     core/spritecatalog.h \
+    core/ai/chathistory.h \
+    core/ai/emotionparser.h \
     core/ai/iaisession.h \
     core/ai/nullaisession.h \
+    core/ai/openaichatsession.h \
     ui/characterspriteview.h
 
 # Default rules for deployment.

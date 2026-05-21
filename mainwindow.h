@@ -5,12 +5,14 @@
 #include <QWidget>
 
 class CharacterSpriteView;
+class ConfigManager;
 class IAiSession;
 class QLabel;
 class QLineEdit;
+class QCloseEvent;
+class QShowEvent;
 class SpriteCatalog;
 
-/// 桌宠主壳：无边框置顶、透明背景、立绘区 + 原型输入条 + AI 会话占位。
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -20,11 +22,13 @@ public:
     ~MainWindow() override;
 
 protected:
+    void closeEvent(QCloseEvent *event) override;
     void showEvent(QShowEvent *event) override;
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     void applyWindowChrome();
+    void persistWindowPosition() const;
     void wireAiSession();
     void syncChromeToSprite();
     void showPetMenu(const QPoint &globalPos);
@@ -37,6 +41,7 @@ private:
     CharacterSpriteView *sprite_ = nullptr;
     QLabel *replyLabel_ = nullptr;
     QLineEdit *inputLine_ = nullptr;
+    ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
 
     bool dragging_ = false;

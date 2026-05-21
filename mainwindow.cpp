@@ -1,14 +1,16 @@
 #include "mainwindow.h"
 
 #include "core/ai/iaisession.h"
-#include "core/ai/nullaisession.h"
+#include "core/ai/openaichatsession.h"
+#include "core/config/appconfig.h"
+#include "core/config/configmanager.h"
 #include "core/spritecatalog.h"
 #include "ui/characterspriteview.h"
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QCursor>
 #include <QGuiApplication>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -26,16 +28,19 @@ MainWindow::MainWindow(QWidget *parent)
     , sprite_(new CharacterSpriteView(catalog_, this))
     , replyLabel_(new QLabel(this))
     , inputLine_(new QLineEdit(this))
-    , ai_(new NullAiSession(this))
+    , configManager_(new ConfigManager(this))
+    , ai_(nullptr)
 {
     applyWindowChrome();
+    configManager_->load();
+    ai_ = new OpenAiChatSession(configManager_, this);
 
     replyLabel_->setWordWrap(true);
     replyLabel_->setAlignment(Qt::AlignTop | Qt::AlignLeft);
     replyLabel_->setStyleSheet(QStringLiteral("QLabel { color: #e8eaf0; font-size: 12px; }"));
     replyLabel_->setMinimumWidth(240);
-    replyLabel_->setMaximumHeight(96);
-    replyLabel_->setText(QStringLiteral("原型：回车发送，占位 AI 将回显。"));
+    replyLabel_->setMaximumHeight(112);
+    replyLabel_->setText(QStringLiteral("原型阶段：请先在 ~/.hyori/config.json 填写 LLM 配置。"));
 
     inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));
     inputLine_->setClearButtonEnabled(true);
@@ -49,7 +54,6 @@ MainWindow::MainWindow(QWidget *parent)
     root->addWidget(sprite_, 0, Qt::AlignHCenter);
     root->addWidget(replyLabel_);
     root->addWidget(inputLine_);
-
     setLayout(root);
 
     sprite_->setCursor(Qt::OpenHandCursor);
@@ -65,16 +69,16 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(inputLine_, &QLineEdit::returnPressed, this, [this] {
-        const QString t = inputLine_->text().trimmed();
-        if (t.isEmpty())
+        const QString text = inputLine_->text().trimmed();
+        if (text.isEmpty())
             return;
-        replyLabel_->setText(QStringLiteral("…"));
-        ai_->submit(t);
+
+        replyLabel_->setText(QStringLiteral("正在等待冰织回复…"));
+        ai_->submit(text);
         inputLine_->clear();
     });
 
     wireAiSession();
-
     QTimer::singleShot(0, this, [this] { syncChromeToSprite(); });
 }
 
@@ -88,16 +92,25 @@ void MainWindow::applyWindowChrome()
     setObjectName(QStringLiteral("MainWindowPet"));
 }
 
+void MainWindow::persistWindowPosition() const
+{
+    AppConfig config = configManager_->config();
+    config.windowPos = pos();
+    configManager_->setConfig(config);
+    configManager_->save();
+}
+
 void MainWindow::wireAiSession()
 {
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
         replyLabel_->setText(text);
     });
-    connect(ai_, &IAiSession::sessionError, this, [this](const QString &e) {
-        replyLabel_->setText(e);
+    connect(ai_, &IAiSession::sessionError, this, [this](const QString &error) {
+        replyLabel_->setText(error);
     });
-    connect(ai_, &IAiSession::assistantEmotion, this,
-            [](const QString &token) { Q_UNUSED(token); });
+    connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &token) {
+        replyLabel_->setText(replyLabel_->text() + QStringLiteral("\n[emotion:%1]").arg(token));
+    });
 }
 
 void MainWindow::syncChromeToSprite()
@@ -107,11 +120,24 @@ void MainWindow::syncChromeToSprite()
     adjustSize();
 }
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    persistWindowPosition();
+    QWidget::closeEvent(event);
+}
+
 void MainWindow::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
-    const QRect avail = QGuiApplication::primaryScreen()->availableGeometry();
-    move(avail.bottomRight() - QPoint(width() + 24, height() + 24));
+
+    const QPoint storedPos = configManager_->config().windowPos;
+    if (!storedPos.isNull()) {
+        move(storedPos);
+    } else {
+        const QRect avail = QGuiApplication::primaryScreen()->availableGeometry();
+        move(avail.bottomRight() - QPoint(width() + 24, height() + 24));
+    }
+
     syncChromeToSprite();
 }
 
@@ -120,18 +146,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     const bool onSprite = (obj == sprite_);
 
     if (onSprite && event->type() == QEvent::Wheel) {
-        auto *we = static_cast<QWheelEvent *>(event);
-        if (we->modifiers() & Qt::AltModifier) {
-            int delta = we->angleDelta().y();
+        auto *wheelEvent = static_cast<QWheelEvent *>(event);
+        if (wheelEvent->modifiers() & Qt::AltModifier) {
+            int delta = wheelEvent->angleDelta().y();
             if (delta == 0)
-                delta = we->angleDelta().x();
+                delta = wheelEvent->angleDelta().x();
             const int dir = (delta > 0) ? 1 : (delta < 0 ? -1 : 0);
             if (dir != 0) {
-                const qreal s = sprite_->scale() + dir * 0.05;
-                sprite_->setScale(s);
+                const qreal nextScale = sprite_->scale() + dir * 0.05;
+                sprite_->setScale(nextScale);
                 syncChromeToSprite();
             }
-            we->accept();
+            wheelEvent->accept();
             return true;
         }
     }
@@ -139,17 +165,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     if (onSprite) {
         switch (event->type()) {
         case QEvent::MouseButtonPress: {
-            auto *me = static_cast<QMouseEvent *>(event);
-            if (me->button() == Qt::LeftButton && (me->modifiers() & Qt::AltModifier)) {
-                startDrag(me->globalPosition().toPoint());
+            auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton
+                && (mouseEvent->modifiers() & Qt::AltModifier)) {
+                startDrag(mouseEvent->globalPosition().toPoint());
                 return true;
             }
             break;
         }
         case QEvent::MouseMove: {
             if (dragging_) {
-                auto *me = static_cast<QMouseEvent *>(event);
-                updateDrag(me->globalPosition().toPoint());
+                auto *mouseEvent = static_cast<QMouseEvent *>(event);
+                updateDrag(mouseEvent->globalPosition().toPoint());
                 return true;
             }
             break;
@@ -180,14 +207,14 @@ void MainWindow::startDrag(const QPoint &globalPress)
 
 void MainWindow::updateDrag(const QPoint &globalPos)
 {
-    const int thresh = QGuiApplication::styleHints()->startDragDistance();
+    const int threshold = QGuiApplication::styleHints()->startDragDistance();
     if (!draggingStarted_) {
-        const QPoint cur = globalPos;
-        const QPoint delta = cur - (dragOffset_ + frameGeometry().topLeft());
-        if (delta.manhattanLength() < thresh)
+        const QPoint delta = globalPos - (dragOffset_ + frameGeometry().topLeft());
+        if (delta.manhattanLength() < threshold)
             return;
         draggingStarted_ = true;
     }
+
     move(globalPos - dragOffset_);
 }
 
@@ -197,6 +224,7 @@ void MainWindow::endDrag()
     dragging_ = false;
     draggingStarted_ = false;
     sprite_->setCursor(Qt::OpenHandCursor);
+    persistWindowPosition();
 }
 
 void MainWindow::showPetMenu(const QPoint &globalPos)
@@ -209,10 +237,10 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
         modesMenu->addAction(QStringLiteral("（无）"))->setEnabled(false);
     } else {
         for (const QString &name : names) {
-            QAction *a = modesMenu->addAction(name);
-            a->setCheckable(true);
-            a->setChecked(name == current);
-            connect(a, &QAction::triggered, this, [this, name] { catalog_->setMode(name); });
+            QAction *action = modesMenu->addAction(name);
+            action->setCheckable(true);
+            action->setChecked(name == current);
+            connect(action, &QAction::triggered, this, [this, name] { catalog_->setMode(name); });
         }
     }
 

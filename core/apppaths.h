@@ -4,10 +4,10 @@
 
 namespace AppPaths {
 
-/// 可执行文件旁的资源根目录：`<app>/assets`
+QString appDataRoot();
+QString configFilePath();
+QString logsRoot();
 QString assetsRoot();
-
-/// 立绘包根目录：`<app>/assets/modes`
 QString modesRoot();
 
 } // namespace AppPaths

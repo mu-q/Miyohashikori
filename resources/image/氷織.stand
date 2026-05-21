@@ -1,0 +1,28 @@
+[%[
+ "facexoff"=>0,
+ "faceyoff"=>3,
+ "facezoom"=>90,
+ "filename"=>"•XD‚`",
+ "leveloffset"=>[[0,45],[0,0],[0,-51],[0,-140],[0,-234]],
+ "name"=>"ƒ|[ƒY‚P",
+ "xoffset"=>0,
+ "yoffset"=>320
+],%[
+ "facexoff"=>-8,
+ "faceyoff"=>1,
+ "facezoom"=>90,
+ "filename"=>"•XD‚a",
+ "leveloffset"=>[[0,45],[0,0],[0,-60],[0,-140],[0,-230]],
+ "name"=>"ƒ|[ƒY‚Q",
+ "xoffset"=>0,
+ "yoffset"=>320
+],%[
+ "facexoff"=>2,
+ "faceyoff"=>0,
+ "facezoom"=>90,
+ "filename"=>"•XD‚b",
+ "leveloffset"=>[[0,45],[0,0],[0,-60],[0,-140],[0,-230]],
+ "name"=>"ƒ|[ƒY‚R",
+ "xoffset"=>-25,
+ "yoffset"=>320
+],void]

@@ -330,6 +330,7 @@ Makefile: ../../Miyohashikori.pro D:/softwareengineering/QT/6.5.3/mingw_64/mkspe
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/qt_config.prf \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/win32-g++/qmake.conf \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/exclusive_builds.prf \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/toolchain.prf \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/default_pre.prf \
@@ -357,9 +358,9 @@ Makefile: ../../Miyohashikori.pro D:/softwareengineering/QT/6.5.3/mingw_64/mkspe
 		../../Miyohashikori.pro \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Widgets.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Gui.prl \
+		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Network.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Core.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6EntryPoint.prl \
-		.qmake.stash \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/build_pass.prf
 	$(QMAKE) -o Makefile ../../Miyohashikori.pro -spec win32-g++ CONFIG+=debug CONFIG+=qml_debug
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/spec_pre.prf:
@@ -622,6 +623,7 @@ D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/qt_functions.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/qt_config.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/win32-g++/qmake.conf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/spec_post.prf:
+.qmake.stash:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/exclusive_builds.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/toolchain.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/default_pre.prf:
@@ -649,9 +651,9 @@ D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/lex.prf:
 ../../Miyohashikori.pro:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Widgets.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Gui.prl:
+D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Network.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Core.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6EntryPoint.prl:
-.qmake.stash:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/build_pass.prf:
 qmake: FORCE
 	@$(QMAKE) -o Makefile ../../Miyohashikori.pro -spec win32-g++ CONFIG+=debug CONFIG+=qml_debug
