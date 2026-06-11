@@ -1,4 +1,4 @@
-#include "appconfig.h"
+﻿#include "appconfig.h"
 
 #include <QtGlobal>
 
@@ -9,6 +9,9 @@ constexpr double kDefaultVolume = 0.8;
 AppConfig AppConfig::defaults()
 {
     AppConfig config;
+    config.llmEndpoint =
+        QStringLiteral("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions");
+    config.llmModel = QStringLiteral("qwen-plus");
     config.voiceEnabled = true;
     config.volume = kDefaultVolume;
     return config;

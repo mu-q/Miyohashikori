@@ -361,7 +361,8 @@ Makefile: ../../Miyohashikori.pro D:/softwareengineering/QT/6.5.3/mingw_64/mkspe
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Network.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Core.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6EntryPoint.prl \
-		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/build_pass.prf
+		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/build_pass.prf \
+		../../hyori_assets.qrc
 	$(QMAKE) -o Makefile ../../Miyohashikori.pro -spec win32-g++ CONFIG+=debug CONFIG+=qml_debug
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/spec_pre.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/device_config.prf:
@@ -655,6 +656,7 @@ D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Network.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Core.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6EntryPoint.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/build_pass.prf:
+../../hyori_assets.qrc:
 qmake: FORCE
 	@$(QMAKE) -o Makefile ../../Miyohashikori.pro -spec win32-g++ CONFIG+=debug CONFIG+=qml_debug
 

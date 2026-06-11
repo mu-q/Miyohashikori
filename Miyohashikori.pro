@@ -4,6 +4,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
+DEFINES += HYORI_SOURCE_DIR=\\\"$$replace($$PWD, \\\\, /)\\\"
+
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
@@ -16,6 +18,9 @@ SOURCES += \
     core/ai/nullaisession.cpp \
     core/ai/openaichatsession.cpp \
     ui/characterspriteview.cpp
+
+RESOURCES += \
+    hyori_assets.qrc
 
 HEADERS += \
     mainwindow.h \

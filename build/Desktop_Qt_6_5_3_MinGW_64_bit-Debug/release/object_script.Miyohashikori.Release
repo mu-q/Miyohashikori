@@ -9,6 +9,7 @@ release/emotionparser.o
 release/nullaisession.o
 release/openaichatsession.o
 release/characterspriteview.o
+release/qrc_hyori_assets.o
 release/moc_mainwindow.o
 release/moc_configmanager.o
 release/moc_spritecatalog.o

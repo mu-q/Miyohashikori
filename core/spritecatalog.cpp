@@ -1,9 +1,29 @@
-#include "spritecatalog.h"
+﻿#include "spritecatalog.h"
 
 #include "apppaths.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QTimer>
+
+namespace {
+
+QImage loadImageFile(const QString &path)
+{
+    QImage image;
+    if (image.load(path))
+        return image;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    if (!image.loadFromData(file.readAll()))
+        return {};
+    return image;
+}
+
+} // namespace
 
 namespace {
 QStringList imageFilters()
@@ -16,7 +36,11 @@ QStringList imageFilters()
 SpriteCatalog::SpriteCatalog(QObject *parent)
     : QObject(parent)
     , modesBase_(AppPaths::modesRoot())
+    , neutralRestoreTimer_(new QTimer(this))
 {
+    neutralRestoreTimer_->setSingleShot(true);
+    connect(neutralRestoreTimer_, &QTimer::timeout, this, &SpriteCatalog::restoreNeutral);
+
     QDir root(modesBase_);
     if (!root.exists())
         root.mkpath(QStringLiteral("."));
@@ -56,69 +80,96 @@ bool SpriteCatalog::setMode(const QString &name)
     return true;
 }
 
-int SpriteCatalog::frameCount() const
+QString SpriteCatalog::currentEmotion() const
 {
-    return frames_.size();
+    return currentEmotion_;
 }
 
-int SpriteCatalog::currentFrameIndex() const
+QStringList SpriteCatalog::availableEmotions() const
 {
-    return currentIndex_;
+    return emotionImages_.keys();
 }
 
-void SpriteCatalog::setFrameIndex(int index)
+bool SpriteCatalog::setEmotion(const QString &emotion)
 {
-    if (frames_.isEmpty())
-        return;
-    const int n = frames_.size();
-    const int i = ((index % n) + n) % n;
-    if (i == currentIndex_)
-        return;
-    currentIndex_ = i;
-    emit frameChanged(currentIndex_);
+    const QString token = emotion.trimmed().toLower();
+    if (token.isEmpty() || !emotionImages_.contains(token))
+        return false;
+    if (currentEmotion_ == token)
+        return true;
+
+    currentEmotion_ = token;
+    emit emotionChanged(currentEmotion_);
+
+    if (token == QStringLiteral("neutral"))
+        neutralRestoreTimer_->stop();
+    else
+        scheduleNeutralRestore();
+
+    return true;
 }
 
-void SpriteCatalog::nextFrame()
+void SpriteCatalog::restoreNeutral()
 {
-    if (frames_.isEmpty())
+    if (currentEmotion_ == QStringLiteral("neutral"))
         return;
-    setFrameIndex(currentIndex_ + 1);
+    setEmotion(QStringLiteral("neutral"));
 }
 
 QImage SpriteCatalog::currentImage() const
 {
-    if (frames_.isEmpty() || currentIndex_ < 0 || currentIndex_ >= frames_.size())
+    if (currentEmotion_.isEmpty() || !emotionImages_.contains(currentEmotion_))
         return {};
-    return frames_.at(currentIndex_);
+    return emotionImages_.value(currentEmotion_);
 }
 
 void SpriteCatalog::rescanCurrentMode()
 {
-    frameFiles_.clear();
-    frames_.clear();
-    currentIndex_ = 0;
+    emotionImages_.clear();
+    currentEmotion_.clear();
+    neutralRestoreTimer_->stop();
+
     if (currentMode_.isEmpty())
         return;
-    loadFrameFiles();
-    emit frameChanged(currentIndex_);
+
+    loadEmotionImages();
+
+    if (emotionImages_.contains(QStringLiteral("neutral")))
+        setEmotion(QStringLiteral("neutral"));
+    else if (!emotionImages_.isEmpty())
+        setEmotion(emotionImages_.constBegin().key());
 }
 
-bool SpriteCatalog::loadFrameFiles()
+bool SpriteCatalog::loadEmotionImages()
 {
-    const QDir dir(modesBase_ + QLatin1Char('/') + currentMode_);
-    if (!dir.exists())
-        return false;
+    const QStringList roots = {
+        QDir::cleanPath(modesBase_ + QLatin1Char('/') + currentMode_),
+        QStringLiteral(":/assets/modes/") + currentMode_,
+    };
 
-    const QStringList names = dir.entryList(imageFilters(), QDir::Files, QDir::Name);
-    frameFiles_.reserve(names.size());
-    frames_.reserve(names.size());
-    for (const QString &fileName : names) {
-        const QString path = dir.filePath(fileName);
-        QImage img(path);
-        if (img.isNull())
+    for (const QString &rootPath : roots) {
+        const QDir dir(rootPath);
+        if (!dir.exists())
             continue;
-        frameFiles_.append(path);
-        frames_.append(std::move(img));
+
+        const QStringList names = dir.entryList(imageFilters(), QDir::Files, QDir::Name);
+        for (const QString &fileName : names) {
+            const QString emotion = QFileInfo(fileName).completeBaseName().toLower();
+            if (emotion.isEmpty() || emotionImages_.contains(emotion))
+                continue;
+
+            QImage img = loadImageFile(dir.filePath(fileName));
+            if (img.isNull())
+                continue;
+            emotionImages_.insert(emotion, std::move(img));
+        }
     }
-    return !frames_.isEmpty();
+    return !emotionImages_.isEmpty();
+}
+
+void SpriteCatalog::scheduleNeutralRestore()
+{
+    if (!emotionImages_.contains(QStringLiteral("neutral")))
+        return;
+    neutralRestoreTimer_->start(kNeutralRestoreMs);
 }

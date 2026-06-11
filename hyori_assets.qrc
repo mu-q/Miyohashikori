@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/modes/default/neutral.png</file>
+        <file>assets/modes/default/happy.png</file>
+        <file>assets/modes/default/shy.png</file>
+        <file>assets/modes/default/concerned.png</file>
+        <file>assets/modes/default/smile.png</file>
+        <file>assets/modes/default/angry.png</file>
+        <file>assets/modes/default/awkward.png</file>
+        <file>assets/modes/default/miserable.png</file>
+        <file>assets/modes/default/shock.png</file>
+        <file>assets/modes/default/speechless.png</file>
+    </qresource>
+</RCC>

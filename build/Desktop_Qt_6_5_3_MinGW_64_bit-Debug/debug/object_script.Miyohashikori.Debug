@@ -9,6 +9,7 @@ debug/emotionparser.o
 debug/nullaisession.o
 debug/openaichatsession.o
 debug/characterspriteview.o
+debug/qrc_hyori_assets.o
 debug/moc_mainwindow.o
 debug/moc_configmanager.o
 debug/moc_spritecatalog.o

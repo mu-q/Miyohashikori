@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 
 #include "core/ai/iaisession.h"
 #include "core/ai/openaichatsession.h"
@@ -15,6 +15,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QRect>
 #include <QScreen>
 #include <QShowEvent>
 #include <QStyleHints>
@@ -63,7 +64,9 @@ MainWindow::MainWindow(QWidget *parent)
         showPetMenu(QCursor::pos());
     });
 
-    connect(catalog_, &SpriteCatalog::frameChanged, this, [this](int) { syncChromeToSprite(); });
+    connect(catalog_, &SpriteCatalog::emotionChanged, this, [this](const QString &) {
+        syncChromeToSprite();
+    });
     connect(catalog_, &SpriteCatalog::modeChanged, this, [this](const QString &) {
         syncChromeToSprite();
     });
@@ -79,16 +82,17 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     wireAiSession();
-    QTimer::singleShot(0, this, [this] { syncChromeToSprite(); });
+    QTimer::singleShot(0, this, [this] { applyWindowPlacement(); });
 }
 
 MainWindow::~MainWindow() = default;
 
+//无边框、透明背景、始终置顶、不在任务栏显示独立图标的浮动窗口
 void MainWindow::applyWindowChrome()
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
-    setAttribute(Qt::WA_TranslucentBackground, true);
-    setStyleSheet(QStringLiteral("#MainWindowPet { background: transparent; }"));
+    setAttribute(Qt::WA_TranslucentBackground,true);
+    setStyleSheet(QStringLiteral("#MainWindowPet { background:transparent; }"));
     setObjectName(QStringLiteral("MainWindowPet"));
 }
 
@@ -108,9 +112,7 @@ void MainWindow::wireAiSession()
     connect(ai_, &IAiSession::sessionError, this, [this](const QString &error) {
         replyLabel_->setText(error);
     });
-    connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &token) {
-        replyLabel_->setText(replyLabel_->text() + QStringLiteral("\n[emotion:%1]").arg(token));
-    });
+    connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
 }
 
 void MainWindow::syncChromeToSprite()
@@ -118,6 +120,51 @@ void MainWindow::syncChromeToSprite()
     sprite_->adjustSize();
     layout()->activate();
     adjustSize();
+}
+
+void MainWindow::applyWindowPlacement()
+{
+    syncChromeToSprite();
+
+    QScreen *screen = QGuiApplication::primaryScreen();
+    if (!screen)
+        return;
+
+    const QRect avail = screen->availableGeometry();
+    QPoint target = configManager_->config().windowPos;
+    if (target.isNull())
+        target = QPoint(avail.right() - width() - 24, avail.top() + 24);
+
+    move(target);
+    if (!avail.intersects(frameGeometry()))
+        move(QPoint(avail.right() - width() - 24, avail.top() + 24));
+
+    clampWindowToScreen(avail);
+    raise();
+    activateWindow();
+}
+
+void MainWindow::clampWindowToScreen(const QRect &avail)
+{
+    QRect frame = frameGeometry();
+    int x = frame.x();
+    int y = frame.y();
+
+    if (frame.width() >= avail.width())
+        x = avail.left();
+    else if (frame.right() > avail.right())
+        x = avail.right() - frame.width();
+
+    if (frame.height() >= avail.height())
+        y = avail.top();
+    else if (frame.bottom() > avail.bottom())
+        y = avail.bottom() - frame.height();
+
+    x = qBound(avail.left(), x, qMax(avail.left(), avail.right() - frame.width()));
+    y = qBound(avail.top(), y, qMax(avail.top(), avail.bottom() - frame.height()));
+
+    if (QPoint(x, y) != frame.topLeft())
+        move(x, y);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -129,16 +176,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
-
-    const QPoint storedPos = configManager_->config().windowPos;
-    if (!storedPos.isNull()) {
-        move(storedPos);
-    } else {
-        const QRect avail = QGuiApplication::primaryScreen()->availableGeometry();
-        move(avail.bottomRight() - QPoint(width() + 24, height() + 24));
-    }
-
-    syncChromeToSprite();
+    QTimer::singleShot(0, this, [this] { applyWindowPlacement(); });
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)

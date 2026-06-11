@@ -1,4 +1,4 @@
-#ifndef MAINWINDOW_H
+﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QPoint>
@@ -11,6 +11,7 @@ class QLabel;
 class QLineEdit;
 class QCloseEvent;
 class QShowEvent;
+class QRect;
 class SpriteCatalog;
 
 class MainWindow : public QWidget
@@ -31,6 +32,8 @@ private:
     void persistWindowPosition() const;
     void wireAiSession();
     void syncChromeToSprite();
+    void applyWindowPlacement();
+    void clampWindowToScreen(const QRect &avail);
     void showPetMenu(const QPoint &globalPos);
 
     void startDrag(const QPoint &globalPress);
