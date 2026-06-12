@@ -9,6 +9,7 @@ release/emotionparser.o
 release/nullaisession.o
 release/openaichatsession.o
 release/characterspriteview.o
+release/replybubble.o
 release/qrc_hyori_assets.o
 release/moc_mainwindow.o
 release/moc_configmanager.o
@@ -17,3 +18,4 @@ release/moc_iaisession.o
 release/moc_nullaisession.o
 release/moc_openaichatsession.o
 release/moc_characterspriteview.o
+release/moc_replybubble.o

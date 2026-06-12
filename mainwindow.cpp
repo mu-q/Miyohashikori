@@ -2,16 +2,17 @@
 
 #include "core/ai/iaisession.h"
 #include "core/ai/openaichatsession.h"
+#include "core/apppaths.h"
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
 #include "core/spritecatalog.h"
 #include "ui/characterspriteview.h"
+#include "ui/replybubble.h"
 
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
 #include <QGuiApplication>
-#include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
@@ -27,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
     , catalog_(new SpriteCatalog(this))
     , sprite_(new CharacterSpriteView(catalog_, this))
-    , replyLabel_(new QLabel(this))
+    , replyBubble_(new ReplyBubble(this))
     , inputLine_(new QLineEdit(this))
     , configManager_(new ConfigManager(this))
     , ai_(nullptr)
@@ -35,13 +36,6 @@ MainWindow::MainWindow(QWidget *parent)
     applyWindowChrome();
     configManager_->load();
     ai_ = new OpenAiChatSession(configManager_, this);
-
-    replyLabel_->setWordWrap(true);
-    replyLabel_->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-    replyLabel_->setStyleSheet(QStringLiteral("QLabel { color: #e8eaf0; font-size: 12px; }"));
-    replyLabel_->setMinimumWidth(240);
-    replyLabel_->setMaximumHeight(112);
-    replyLabel_->setText(QStringLiteral("原型阶段：请先在 ~/.hyori/config.json 填写 LLM 配置。"));
 
     inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));
     inputLine_->setClearButtonEnabled(true);
@@ -53,7 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
     root->setContentsMargins(8, 8, 8, 8);
     root->setSpacing(6);
     root->addWidget(sprite_, 0, Qt::AlignHCenter);
-    root->addWidget(replyLabel_);
+    root->addWidget(replyBubble_, 0, Qt::AlignHCenter);
     root->addWidget(inputLine_);
     setLayout(root);
 
@@ -76,12 +70,14 @@ MainWindow::MainWindow(QWidget *parent)
         if (text.isEmpty())
             return;
 
-        replyLabel_->setText(QStringLiteral("正在等待冰织回复…"));
+        setReplyStatus(QStringLiteral("正在等待冰织回复…"));
+        setInputWaiting(true);
         ai_->submit(text);
         inputLine_->clear();
     });
 
     wireAiSession();
+    refreshConfigHint();
     QTimer::singleShot(0, this, [this] { applyWindowPlacement(); });
 }
 
@@ -107,17 +103,73 @@ void MainWindow::persistWindowPosition() const
 void MainWindow::wireAiSession()
 {
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
-        replyLabel_->setText(text);
+        setReplyMessage(text);
+        setInputWaiting(false);
+    });
+    connect(ai_, &IAiSession::sessionStatus, this, [this](const QString &status) {
+        setReplyStatus(status);
     });
     connect(ai_, &IAiSession::sessionError, this, [this](const QString &error) {
-        replyLabel_->setText(error);
+        setReplyError(error);
+        setInputWaiting(false);
     });
     connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
+}
+
+void MainWindow::refreshConfigHint()
+{
+    configManager_->load();
+    const AppConfig &config = configManager_->config();
+
+    if (config.llmApiKey.trimmed().isEmpty()) {
+        setReplyError(QStringLiteral("未配置 API Key，请在 %1 填写 llmApiKey。")
+                          .arg(AppPaths::configFilePath()));
+        return;
+    }
+    if (config.llmEndpoint.trimmed().isEmpty() || config.llmModel.trimmed().isEmpty()) {
+        setReplyError(QStringLiteral("LLM 配置不完整，请检查 %1 中的 endpoint 与 model。")
+                          .arg(AppPaths::configFilePath()));
+        return;
+    }
+
+    setReplyMessage(QStringLiteral("配置已就绪，输入对话开始聊天。"));
+}
+
+void MainWindow::setReplyStatus(const QString &text)
+{
+    replyBubble_->setTone(ReplyBubble::Tone::Status);
+    replyBubble_->setText(text);
+    syncChromeToSprite();
+}
+
+void MainWindow::setReplyMessage(const QString &text)
+{
+    replyBubble_->setTone(ReplyBubble::Tone::Message);
+    replyBubble_->setText(text);
+    syncChromeToSprite();
+}
+
+void MainWindow::setReplyError(const QString &text)
+{
+    replyBubble_->setTone(ReplyBubble::Tone::Error);
+    replyBubble_->setText(text);
+    syncChromeToSprite();
+}
+
+void MainWindow::setInputWaiting(bool waiting)
+{
+    inputLine_->setEnabled(!waiting);
+    if (waiting) {
+        inputLine_->setPlaceholderText(QStringLiteral("等待回复中…"));
+    } else {
+        inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));
+    }
 }
 
 void MainWindow::syncChromeToSprite()
 {
     sprite_->adjustSize();
+    replyBubble_->adjustSize();
     layout()->activate();
     adjustSize();
 }

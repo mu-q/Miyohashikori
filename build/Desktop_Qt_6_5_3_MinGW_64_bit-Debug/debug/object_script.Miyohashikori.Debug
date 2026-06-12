@@ -9,6 +9,7 @@ debug/emotionparser.o
 debug/nullaisession.o
 debug/openaichatsession.o
 debug/characterspriteview.o
+debug/replybubble.o
 debug/qrc_hyori_assets.o
 debug/moc_mainwindow.o
 debug/moc_configmanager.o
@@ -17,3 +18,4 @@ debug/moc_iaisession.o
 debug/moc_nullaisession.o
 debug/moc_openaichatsession.o
 debug/moc_characterspriteview.o
+debug/moc_replybubble.o

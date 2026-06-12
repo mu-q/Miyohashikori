@@ -17,7 +17,8 @@ SOURCES += \
     core/ai/emotionparser.cpp \
     core/ai/nullaisession.cpp \
     core/ai/openaichatsession.cpp \
-    ui/characterspriteview.cpp
+    ui/characterspriteview.cpp \
+    ui/replybubble.cpp
 
 RESOURCES += \
     hyori_assets.qrc
@@ -33,7 +34,8 @@ HEADERS += \
     core/ai/iaisession.h \
     core/ai/nullaisession.h \
     core/ai/openaichatsession.h \
-    ui/characterspriteview.h
+    ui/characterspriteview.h \
+    ui/replybubble.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QObject>
 #include <QString>
@@ -16,5 +16,6 @@ public:
 signals:
     void assistantMessage(const QString &text);
     void assistantEmotion(const QString &token);
+    void sessionStatus(const QString &message);
     void sessionError(const QString &message);
 };

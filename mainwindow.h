@@ -7,11 +7,11 @@
 class CharacterSpriteView;
 class ConfigManager;
 class IAiSession;
-class QLabel;
 class QLineEdit;
 class QCloseEvent;
 class QShowEvent;
 class QRect;
+class ReplyBubble;
 class SpriteCatalog;
 
 class MainWindow : public QWidget
@@ -31,6 +31,11 @@ private:
     void applyWindowChrome();
     void persistWindowPosition() const;
     void wireAiSession();
+    void refreshConfigHint();
+    void setReplyStatus(const QString &text);
+    void setReplyMessage(const QString &text);
+    void setReplyError(const QString &text);
+    void setInputWaiting(bool waiting);
     void syncChromeToSprite();
     void applyWindowPlacement();
     void clampWindowToScreen(const QRect &avail);
@@ -42,7 +47,7 @@ private:
 
     SpriteCatalog *catalog_ = nullptr;
     CharacterSpriteView *sprite_ = nullptr;
-    QLabel *replyLabel_ = nullptr;
+    ReplyBubble *replyBubble_ = nullptr;
     QLineEdit *inputLine_ = nullptr;
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
