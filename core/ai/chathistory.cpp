@@ -23,7 +23,8 @@ void ChatHistory::addAssistantMessage(const QString &text)
     trimToRecentTurns();
 }
 
-QJsonArray ChatHistory::toOpenAiMessages(const QString &systemPrompt) const
+QJsonArray ChatHistory::toOpenAiMessages(const QString &systemPrompt,
+                                         const QJsonArray &prefillMessages) const
 {
     QJsonArray messages;
 
@@ -31,6 +32,9 @@ QJsonArray ChatHistory::toOpenAiMessages(const QString &systemPrompt) const
     system.insert(QStringLiteral("role"), QStringLiteral("system"));
     system.insert(QStringLiteral("content"), systemPrompt);
     messages.append(system);
+
+    for (const QJsonValue &value : prefillMessages)
+        messages.append(value);
 
     for (const Message &message : messages_) {
         QJsonObject obj;

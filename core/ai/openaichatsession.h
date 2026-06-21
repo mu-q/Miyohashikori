@@ -24,6 +24,7 @@ private:
     };
 
     QString buildSystemPrompt() const;
+    QJsonArray buildFewShotMessages() const;
     void sendRequest(const PendingRequest &request);
     void handleReply(QNetworkReply *reply, PendingRequest request);
     void retryRequest(const PendingRequest &request, const QString &reason);

@@ -10,7 +10,8 @@ public:
     void clear();
     void addUserMessage(const QString &text);
     void addAssistantMessage(const QString &text);
-    QJsonArray toOpenAiMessages(const QString &systemPrompt) const;
+    QJsonArray toOpenAiMessages(const QString &systemPrompt,
+                                const QJsonArray &prefillMessages = {}) const;
 
 private:
     struct Message
