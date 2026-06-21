@@ -5,9 +5,11 @@
 #include "../config/appconfig.h"
 #include "../config/configmanager.h"
 
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QStringList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -18,6 +20,7 @@
 namespace {
 constexpr int kMaxAttempts = 4;
 constexpr int kRequestTimeoutMs = 30000;
+constexpr auto kFewShotResourcePath = ":/resources/txt/hyori_fewshot.json";
 
 QString extractContent(const QJsonObject &messageObj)
 {
@@ -83,6 +86,74 @@ QString validateLlmConfig(const AppConfig &config)
     }
     return {};
 }
+
+QJsonObject makeMessage(const QString &role, const QString &content)
+{
+    QJsonObject obj;
+    obj.insert(QStringLiteral("role"), role);
+    obj.insert(QStringLiteral("content"), content);
+    return obj;
+}
+
+QJsonArray defaultFewShotMessages()
+{
+    QJsonArray messages;
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("好久没来这座桥了。")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("毕竟平时不太会来这边呢。 [emotion:neutral]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("如果再多建一些桥，往来就更方便了吧？")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("从历史上看，这条河在城镇建成的时候是作为运河使用的，所以才尽可能减少了桥梁吧。 [emotion:neutral]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("冰织小姐，你其实不是做不到，只是不太擅长吧？")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("是这样吗……不过，果然还是不太擅长啊。 [emotion:shy]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("没关系，而且你的泡茶技术是最棒的。")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("这样啊……说得也是，那我就不太在意了。 [emotion:shy]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("明天能和我一起去配送吗？")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("欸嘿，好呀。一起去吧。 [emotion:happy]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("很冷吗？")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("与其说是冷……不如说是快冻住了。刚洗完餐具，手上的水还没干，就忘记戴手套了。你没事吧？ [emotion:concerned]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("那我帮你暖手。")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("啊……这样突然，会害羞的。可是……真的很暖和。 [emotion:shy]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("你为什么会想留在我身边？")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("因为……真正想说的话，果然还是这个吧。我想待在你身边。 [emotion:shy]")));
+
+    return messages;
+}
+
+QJsonArray loadFewShotMessages()
+{
+    QFile file(QStringLiteral(kFewShotResourcePath));
+    if (!file.open(QIODevice::ReadOnly))
+        return defaultFewShotMessages();
+
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isArray())
+        return defaultFewShotMessages();
+
+    return doc.array();
+}
 } // namespace
 
 OpenAiChatSession::OpenAiChatSession(ConfigManager *configManager, QObject *parent)
@@ -131,55 +202,7 @@ QString OpenAiChatSession::buildSystemPrompt() const
 
 QJsonArray OpenAiChatSession::buildFewShotMessages() const
 {
-    auto makeMessage = [](const QString &role, const QString &content) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("role"), role);
-        obj.insert(QStringLiteral("content"), content);
-        return obj;
-    };
-
-    QJsonArray messages;
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("好久没来这座桥了。")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("毕竟平时不太会来这边呢。 [emotion:neutral]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("如果再多建一些桥，往来就更方便了吧？")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("从历史上看，这条河在城镇建成的时候是作为运河使用的，所以才尽可能减少了桥梁吧。 [emotion:neutral]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("冰织小姐，你其实不是做不到，只是不太擅长吧？")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("是这样吗……不过，果然还是不太擅长啊。 [emotion:shy]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("没关系，而且你的泡茶技术是最棒的。")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("这样啊……说得也是，那我就不太在意了。 [emotion:shy]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("明天能和我一起去配送吗？")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("欸嘿，好呀。一起去吧。 [emotion:happy]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("很冷吗？")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("与其说是冷……不如说是快冻住了。刚洗完餐具，手上的水还没干，就忘记戴手套了。你没事吧？ [emotion:concerned]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("那我帮你暖手。")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("啊……这样突然，会害羞的。可是……真的很暖和。 [emotion:shy]")));
-
-    messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("你为什么会想留在我身边？")));
-    messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("因为……真正想说的话，果然还是这个吧。我想待在你身边。 [emotion:shy]")));
-
-    return messages;
+    return loadFewShotMessages();
 }
 
 void OpenAiChatSession::sendRequest(const PendingRequest &request)
