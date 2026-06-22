@@ -3,6 +3,7 @@
 #include "chathistory.h"
 #include "iaisession.h"
 
+#include <QStringList>
 class ConfigManager;
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -25,6 +26,8 @@ private:
 
     QString buildSystemPrompt() const;
     QJsonArray buildFewShotMessages() const;
+    QString buildMemoryPrompt() const;
+    void updateShortTermMemory(const QString &userText);
     void sendRequest(const PendingRequest &request);
     void handleReply(QNetworkReply *reply, PendingRequest request);
     void retryRequest(const PendingRequest &request, const QString &reason);
@@ -32,4 +35,5 @@ private:
     QNetworkAccessManager *network_ = nullptr;
     ConfigManager *configManager_ = nullptr;
     ChatHistory history_;
+    QStringList shortTermMemory_;
 };

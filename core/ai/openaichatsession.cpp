@@ -10,6 +10,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QRegularExpression>
 #include <QStringList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -20,7 +21,8 @@
 namespace {
 constexpr int kMaxAttempts = 4;
 constexpr int kRequestTimeoutMs = 30000;
-constexpr auto kFewShotResourcePath = ":/resources/txt/hyori_fewshot.json";
+constexpr int kMaxShortTermMemories = 6;
+constexpr char kFewShotResourcePath[] = ":/resources/txt/hyori_fewshot.json";
 
 QString extractContent(const QJsonObject &messageObj)
 {
@@ -143,7 +145,7 @@ QJsonArray defaultFewShotMessages()
 
 QJsonArray loadFewShotMessages()
 {
-    QFile file(QStringLiteral(kFewShotResourcePath));
+    QFile file(QString::fromUtf8(kFewShotResourcePath));
     if (!file.open(QIODevice::ReadOnly))
         return defaultFewShotMessages();
 
@@ -153,6 +155,73 @@ QJsonArray loadFewShotMessages()
         return defaultFewShotMessages();
 
     return doc.array();
+}
+
+QString normalizeWhitespace(QString text)
+{
+    text.replace(QRegularExpression(QStringLiteral("\\s+")), QStringLiteral(" "));
+    return text.trimmed();
+}
+
+QStringList extractMemoryCandidates(const QString &userText)
+{
+    const QString text = normalizeWhitespace(userText);
+    if (text.isEmpty())
+        return {};
+
+    QStringList memories;
+    const QList<QPair<QRegularExpression, QString>> patterns = {
+        {QRegularExpression(QStringLiteral("(今天|最近).{0,12}(累|好累|疲惫|困|犯困|没精神)")),
+         QStringLiteral("用户最近有些疲惫，需要更温柔地关心作息和休息。")},
+        {QRegularExpression(QStringLiteral("(睡不着|失眠|没睡好|熬夜)")),
+         QStringLiteral("用户最近睡眠状态不太好，可以多安抚并提醒早点休息。")},
+        {QRegularExpression(QStringLiteral("(难过|伤心|委屈|心情不好|焦虑|紧张|压力大|烦)")),
+         QStringLiteral("用户最近情绪起伏比较明显，回复时先安抚，再给轻一点的建议。")},
+        {QRegularExpression(QStringLiteral("(感冒|发烧|头疼|胃疼|不舒服|生病)")),
+         QStringLiteral("用户最近身体状态不太舒服，要优先表达关心。")},
+        {QRegularExpression(QStringLiteral("(上班|加班|开会|工作|项目|赶工)")),
+         QStringLiteral("用户最近在忙工作相关的事，可以多给陪伴和打气。")},
+        {QRegularExpression(QStringLiteral("(考试|复习|作业|论文|答辩|上课)")),
+         QStringLiteral("用户最近在忙学习相关的事，可以多鼓励和陪伴。")},
+        {QRegularExpression(QStringLiteral("(想你|想见你|陪我|抱抱|亲亲)")),
+         QStringLiteral("用户这段时间更需要亲近感和陪伴感。")}
+    };
+
+    for (const auto &entry : patterns) {
+        if (entry.first.match(text).hasMatch())
+            memories.append(entry.second);
+    }
+
+    const QList<QRegularExpression> preferencePatterns = {
+        QRegularExpression(QStringLiteral("我喜欢(.{1,12})")),
+        QRegularExpression(QStringLiteral("我想吃(.{1,12})")),
+        QRegularExpression(QStringLiteral("我想喝(.{1,12})")),
+        QRegularExpression(QStringLiteral("我明天要(.{1,16})")),
+        QRegularExpression(QStringLiteral("我要去(.{1,16})"))
+    };
+
+    for (const QRegularExpression &pattern : preferencePatterns) {
+        const QRegularExpressionMatch match = pattern.match(text);
+        if (!match.hasMatch())
+            continue;
+
+        const QString detail = normalizeWhitespace(match.captured(1));
+        if (detail.isEmpty())
+            continue;
+
+        if (pattern.pattern().startsWith(QStringLiteral("我喜欢")))
+            memories.append(QStringLiteral("用户提到自己喜欢%1。").arg(detail));
+        else if (pattern.pattern().startsWith(QStringLiteral("我想吃")))
+            memories.append(QStringLiteral("用户提到自己现在想吃%1。").arg(detail));
+        else if (pattern.pattern().startsWith(QStringLiteral("我想喝")))
+            memories.append(QStringLiteral("用户提到自己现在想喝%1。").arg(detail));
+        else if (pattern.pattern().startsWith(QStringLiteral("我明天要")))
+            memories.append(QStringLiteral("用户提到自己明天要%1。").arg(detail));
+        else if (pattern.pattern().startsWith(QStringLiteral("我要去")))
+            memories.append(QStringLiteral("用户提到自己要去%1。").arg(detail));
+    }
+
+    return memories;
 }
 } // namespace
 
@@ -180,6 +249,7 @@ void OpenAiChatSession::submit(const QString &userText)
         return;
     }
 
+    updateShortTermMemory(request.userText);
     history_.addUserMessage(request.userText);
     emit sessionStatus(QStringLiteral("正在连接冰织…"));
     sendRequest(request);
@@ -205,6 +275,34 @@ QJsonArray OpenAiChatSession::buildFewShotMessages() const
     return loadFewShotMessages();
 }
 
+QString OpenAiChatSession::buildMemoryPrompt() const
+{
+    if (shortTermMemory_.isEmpty())
+        return {};
+
+    QStringList lines;
+    lines.append(QStringLiteral("以下是你对用户的短期记忆，请只在自然合适时体现在回应里，不要逐条复述："));
+    for (const QString &memory : shortTermMemory_)
+        lines.append(QStringLiteral("- %1").arg(memory));
+    lines.append(QStringLiteral("如果当前用户话题与这些记忆无关，就正常回应，不要生硬提起。"));
+    return lines.join(QLatin1Char('\n'));
+}
+
+void OpenAiChatSession::updateShortTermMemory(const QString &userText)
+{
+    const QStringList candidates = extractMemoryCandidates(userText);
+    if (candidates.isEmpty())
+        return;
+
+    for (const QString &candidate : candidates) {
+        shortTermMemory_.removeAll(candidate);
+        shortTermMemory_.append(candidate);
+    }
+
+    while (shortTermMemory_.size() > kMaxShortTermMemories)
+        shortTermMemory_.removeFirst();
+}
+
 void OpenAiChatSession::sendRequest(const PendingRequest &request)
 {
     const AppConfig &config = configManager_->config();
@@ -218,8 +316,12 @@ void OpenAiChatSession::sendRequest(const PendingRequest &request)
 
     QJsonObject payload;
     payload.insert(QStringLiteral("model"), config.llmModel);
+    const QString memoryPrompt = buildMemoryPrompt();
+    const QString systemPrompt = memoryPrompt.isEmpty()
+        ? buildSystemPrompt()
+        : QStringLiteral("%1\n\n%2").arg(buildSystemPrompt(), memoryPrompt);
     payload.insert(QStringLiteral("messages"),
-                   history_.toOpenAiMessages(buildSystemPrompt(), buildFewShotMessages()));
+                   history_.toOpenAiMessages(systemPrompt, buildFewShotMessages()));
     payload.insert(QStringLiteral("temperature"), 0.9);
 
     QNetworkReply *reply =

@@ -2663,8 +2663,13 @@ release/openaichatsession.o: ../../core/ai/openaichatsession.cpp ../../core/ai/o
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QPoint \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qpoint.h \
 		../../core/config/configmanager.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QFile \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qfile.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qfiledevice.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qiodevice.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QJsonDocument \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qjsondocument.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QJsonParseError \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QStringList \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/QNetworkAccessManager \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/qnetworkaccessmanager.h \
@@ -2682,7 +2687,6 @@ release/openaichatsession.o: ../../core/ai/openaichatsession.cpp ../../core/ai/o
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/qtcpsocket.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/qabstractsocket.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/qhostaddress.h \
-		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qiodevice.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/qsslerror.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtNetwork/qsslcertificate.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qcryptographichash.h \
