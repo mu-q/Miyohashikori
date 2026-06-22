@@ -1,4 +1,4 @@
-QT       += core gui network
+QT       += core gui network multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -13,6 +13,7 @@ SOURCES += \
     core/config/appconfig.cpp \
     core/config/configmanager.cpp \
     core/spritecatalog.cpp \
+    core/voiceplayer.cpp \
     core/ai/chathistory.cpp \
     core/ai/emotionparser.cpp \
     core/ai/nullaisession.cpp \
@@ -29,6 +30,7 @@ HEADERS += \
     core/config/appconfig.h \
     core/config/configmanager.h \
     core/spritecatalog.h \
+    core/voiceplayer.h \
     core/ai/chathistory.h \
     core/ai/emotionparser.h \
     core/ai/iaisession.h \

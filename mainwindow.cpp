@@ -6,6 +6,7 @@
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
 #include "core/spritecatalog.h"
+#include "core/voiceplayer.h"
 #include "ui/characterspriteview.h"
 #include "ui/replybubble.h"
 
@@ -32,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     , inputLine_(new QLineEdit(this))
     , configManager_(new ConfigManager(this))
     , ai_(nullptr)
+    , voicePlayer_(new VoicePlayer(this))
 {
     applyWindowChrome();
     configManager_->load();
@@ -114,6 +116,10 @@ void MainWindow::wireAiSession()
         setInputWaiting(false);
     });
     connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
+    connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &emotion) {
+        configManager_->load();
+        voicePlayer_->playEmotion(emotion, configManager_->config());
+    });
 }
 
 void MainWindow::refreshConfigHint()

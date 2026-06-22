@@ -13,6 +13,7 @@ class QShowEvent;
 class QRect;
 class ReplyBubble;
 class SpriteCatalog;
+class VoicePlayer;
 
 class MainWindow : public QWidget
 {
@@ -51,6 +52,7 @@ private:
     QLineEdit *inputLine_ = nullptr;
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
+    VoicePlayer *voicePlayer_ = nullptr;
 
     bool dragging_ = false;
     bool draggingStarted_ = false;
