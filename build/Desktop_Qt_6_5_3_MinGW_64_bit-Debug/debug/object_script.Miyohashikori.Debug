@@ -4,6 +4,7 @@ debug/apppaths.o
 debug/appconfig.o
 debug/configmanager.o
 debug/spritecatalog.o
+debug/voiceplayer.o
 debug/chathistory.o
 debug/emotionparser.o
 debug/nullaisession.o
@@ -14,6 +15,7 @@ debug/qrc_hyori_assets.o
 debug/moc_mainwindow.o
 debug/moc_configmanager.o
 debug/moc_spritecatalog.o
+debug/moc_voiceplayer.o
 debug/moc_iaisession.o
 debug/moc_nullaisession.o
 debug/moc_openaichatsession.o

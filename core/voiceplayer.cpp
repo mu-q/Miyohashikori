@@ -1,4 +1,4 @@
-#include "voiceplayer.h"
+﻿#include "voiceplayer.h"
 
 #include "config/appconfig.h"
 
@@ -15,12 +15,12 @@ namespace {
 QStringList commonVoices()
 {
     return {
-        QStringLiteral("me/me0001.ogg"),
-        QStringLiteral("me/me0002.ogg"),
-        QStringLiteral("me/me0003.ogg"),
-        QStringLiteral("me/me0004.ogg"),
-        QStringLiteral("me/me0005.ogg"),
-        QStringLiteral("me/me0006.ogg")
+        QStringLiteral("ko/ko0040.ogg"),
+        QStringLiteral("ko/ko0070.ogg"),
+        QStringLiteral("ko/ko3210.ogg"),
+        QStringLiteral("ko/ko3231.ogg"),
+        QStringLiteral("ko/ko3261.ogg"),
+        QStringLiteral("ko/ko3275.ogg")
     };
 }
 
@@ -61,37 +61,37 @@ QStringList VoicePlayer::voiceCandidatesForEmotion(const QString &emotion) const
 
     if (normalized == QStringLiteral("happy")) {
         return {
-            QStringLiteral("me/me0007.ogg"),
-            QStringLiteral("me/me0008.ogg"),
-            QStringLiteral("me/me0011.ogg"),
-            QStringLiteral("me/me0012.ogg")
+            QStringLiteral("ko/ko3344.ogg"),
+            QStringLiteral("ko/ko3258.ogg"),
+            QStringLiteral("ko/ko3263.ogg"),
+            QStringLiteral("ko/ko3294.ogg")
         };
     }
 
     if (normalized == QStringLiteral("shy")) {
         return {
-            QStringLiteral("me/me0013.ogg"),
-            QStringLiteral("me/me0014.ogg"),
-            QStringLiteral("me/me0015.ogg"),
-            QStringLiteral("me/me0016.ogg")
+            QStringLiteral("ko/ko3297.ogg"),
+            QStringLiteral("ko/ko3424.ogg"),
+            QStringLiteral("ko/ko3357.ogg"),
+            QStringLiteral("ko/ko3385.ogg")
         };
     }
 
     if (normalized == QStringLiteral("concerned")) {
         return {
-            QStringLiteral("me/me0017.ogg"),
-            QStringLiteral("me/me0018.ogg"),
-            QStringLiteral("me/me0019.ogg"),
-            QStringLiteral("me/me0020.ogg")
+            QStringLiteral("ko/ko3384.ogg"),
+            QStringLiteral("ko/ko0054.ogg"),
+            QStringLiteral("ko/ko3236.ogg"),
+            QStringLiteral("ko/ko3354.ogg")
         };
     }
 
     if (normalized == QStringLiteral("excited")) {
         return {
-            QStringLiteral("me/me0021.ogg"),
-            QStringLiteral("me/me0022.ogg"),
-            QStringLiteral("me/me0023.ogg"),
-            QStringLiteral("me/me0024.ogg")
+            QStringLiteral("ko/ko3247.ogg"),
+            QStringLiteral("ko/ko3249.ogg"),
+            QStringLiteral("ko/ko3671.ogg"),
+            QStringLiteral("ko/ko3677.ogg")
         };
     }
 

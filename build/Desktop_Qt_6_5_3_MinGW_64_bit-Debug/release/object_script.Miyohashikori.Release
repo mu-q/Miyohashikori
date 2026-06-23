@@ -4,6 +4,7 @@ release/apppaths.o
 release/appconfig.o
 release/configmanager.o
 release/spritecatalog.o
+release/voiceplayer.o
 release/chathistory.o
 release/emotionparser.o
 release/nullaisession.o
@@ -14,6 +15,7 @@ release/qrc_hyori_assets.o
 release/moc_mainwindow.o
 release/moc_configmanager.o
 release/moc_spritecatalog.o
+release/moc_voiceplayer.o
 release/moc_iaisession.o
 release/moc_nullaisession.o
 release/moc_openaichatsession.o

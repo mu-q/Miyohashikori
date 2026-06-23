@@ -356,6 +356,7 @@ Makefile: ../../Miyohashikori.pro D:/softwareengineering/QT/6.5.3/mingw_64/mkspe
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/yacc.prf \
 		D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/lex.prf \
 		../../Miyohashikori.pro \
+		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Multimedia.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Widgets.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Gui.prl \
 		D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Network.prl \
@@ -650,6 +651,7 @@ D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/exceptions.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/yacc.prf:
 D:/softwareengineering/QT/6.5.3/mingw_64/mkspecs/features/lex.prf:
 ../../Miyohashikori.pro:
+D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Multimedia.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Widgets.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Gui.prl:
 D:/softwareengineering/QT/6.5.3/mingw_64/lib/Qt6Network.prl:
