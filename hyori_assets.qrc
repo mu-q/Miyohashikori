@@ -11,5 +11,6 @@
         <file>assets/modes/default/shock.png</file>
         <file>assets/modes/default/speechless.png</file>
         <file>resources/txt/hyori_fewshot.json</file>
+        <file>resources/txt/ko_voice_index.json</file>
     </qresource>
 </RCC>

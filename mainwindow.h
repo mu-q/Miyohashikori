@@ -53,6 +53,7 @@ private:
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
     VoicePlayer *voicePlayer_ = nullptr;
+    QString lastAssistantText_;
 
     bool dragging_ = false;
     bool draggingStarted_ = false;

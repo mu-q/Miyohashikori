@@ -2462,13 +2462,19 @@ debug/voiceplayer.o: ../../core/voiceplayer.cpp ../../core/voiceplayer.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qfiledevice.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qiodevice.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qfileinfo.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QFile \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QFileInfo \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QJsonArray \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qjsonarray.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QJsonDocument \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qjsondocument.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtMultimedia/QMediaPlayer \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtMultimedia/qmediaplayer.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtMultimedia/qmediaenumdebug.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qmetaobject.h \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QRandomGenerator \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/qrandom.h \
+		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QSet \
 		D:/softwareengineering/QT/6.5.3/mingw_64/include/QtCore/QUrl
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o debug/voiceplayer.o ../../core/voiceplayer.cpp
 

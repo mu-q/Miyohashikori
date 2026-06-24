@@ -105,6 +105,7 @@ void MainWindow::persistWindowPosition() const
 void MainWindow::wireAiSession()
 {
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
+        lastAssistantText_ = text;
         setReplyMessage(text);
         setInputWaiting(false);
     });
@@ -118,7 +119,7 @@ void MainWindow::wireAiSession()
     connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
     connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &emotion) {
         configManager_->load();
-        voicePlayer_->playEmotion(emotion, configManager_->config());
+        voicePlayer_->playReply(lastAssistantText_, emotion, configManager_->config());
     });
 }
 
