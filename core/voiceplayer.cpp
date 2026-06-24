@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QMediaPlayer>
 #include <QRandomGenerator>
+#include <QRegularExpression>
 #include <QSet>
 #include <QUrl>
 
@@ -24,6 +25,48 @@ struct VoiceLine
     QString text;
     QString emotion;
     QSet<QString> tags;
+    QSet<QString> concepts;
+};
+
+struct SemanticRule
+{
+    const char *concept;
+    std::initializer_list<const char *> zhPatterns;
+    std::initializer_list<const char *> jpPatterns;
+};
+
+const SemanticRule kSemanticRules[] = {
+    {"greeting_morning", {"早安", "早上好", "早呀", "早呢", "晨安"},
+     {"おはよう", "朝ですね", "朝です", "目が覚め"}},
+    {"sleep", {"晚安", "睡", "困", "休息", "做梦", "失眠", "熬夜"},
+     {"おやすみ", "眠", "寝", "ふわあ", "夢", "夜更かし"}},
+    {"care", {"没事吧", "辛苦", "累", "难受", "不舒服", "生病", "发烧", "头疼", "胃疼",
+              "小心", "暖和", "休息一下", "保重"},
+     {"大丈夫", "お大事", "無理", "休", "風邪", "熱", "頭痛", "具合", "気をつけ",
+      "温か", "暖か"}},
+    {"happy", {"开心", "高兴", "太好了", "真好", "有趣", "笑", "恭喜", "太棒了"},
+     {"ふふ", "うふふ", "嬉", "楽", "よかった", "おめでとう", "素敵"}},
+    {"shy", {"害羞", "不好意思", "脸红", "突然", "亲", "抱", "想你", "羞"},
+     {"えっ", "あっ", "わっ", "恥", "照", "はずか", "どきどき"}},
+    {"reject", {"不行", "不可以", "不准", "不许", "不能", "才不要", "不可以哦"},
+     {"だめ", "ダメ", "いけません", "駄目", "いやです"}},
+    {"thanks", {"谢谢", "感谢", "多谢"},
+     {"ありがとう", "感謝"}},
+    {"together", {"一起", "陪你", "陪我", "去吧", "出门", "帮你", "暖手", "手牵手",
+                  "同行", "陪着"},
+     {"一緒", "行きましょう", "行きます", "手伝", "そば", "隣", "連れて", "付き合"}},
+    {"sweets", {"蛋糕", "甜", "奶茶", "红茶", "巧克力", "牛奶", "点心", "甜品"},
+     {"ケーキ", "甘", "紅茶", "チョコ", "ミルク", "お菓子", "ミルクティ"}},
+    {"affection", {"喜欢你", "想你", "待在你身边", "陪在你身边", "抱抱", "亲亲", "在你身边",
+                   "陪你"},
+     {"好き", "そば", "隣", "待って", "いてください", "あなたのそば", "一緒にいた",
+      "傍に"}},
+    {"apology", {"对不起", "抱歉", "不好意思"},
+     {"ごめん", "すみません", "申し訳"}},
+    {"invitation", {"要不要", "一起去", "陪我去", "出门吗", "好吗", "可以吗"},
+     {"行きましょう", "行きますか", "どうですか", "ませんか", "一緒に"}},
+    {"encourage", {"加油", "别担心", "会好的", "慢慢来", "没关系"},
+     {"頑張", "大丈夫", "平気", "ゆっくり", "無理しない"}}
 };
 
 QStringList commonVoices()
@@ -90,6 +133,40 @@ QSet<QString> inferVoiceTags(const QString &text)
     addIf(QStringLiteral("いてください"), QStringLiteral("affection"));
 
     return tags;
+}
+
+QSet<QString> inferConcepts(const QString &text, bool chineseText)
+{
+    QSet<QString> concepts;
+
+    for (const SemanticRule &rule : kSemanticRules) {
+        const auto &patterns = chineseText ? rule.zhPatterns : rule.jpPatterns;
+        for (const char *pattern : patterns) {
+            const QString qPattern = QString::fromUtf8(pattern);
+            if (qPattern.isEmpty())
+                continue;
+            if (text.contains(qPattern, Qt::CaseInsensitive)) {
+                concepts.insert(QString::fromUtf8(rule.concept));
+                break;
+            }
+        }
+    }
+
+    return concepts;
+}
+
+QSet<QString> extractQuotedKeywords(const QString &text)
+{
+    QSet<QString> keywords;
+    static const QRegularExpression regex(
+        QStringLiteral("([\\p{Han}]{2,6}|[A-Za-z]{3,12}|[ぁ-んァ-ンー]{2,8})"));
+    auto it = regex.globalMatch(text);
+    while (it.hasNext()) {
+        const QString token = it.next().captured(1).trimmed();
+        if (token.size() >= 2)
+            keywords.insert(token);
+    }
+    return keywords;
 }
 
 QString inferVoiceEmotion(const QString &text, const QSet<QString> &tags)
@@ -172,6 +249,7 @@ const QVector<VoiceLine> &loadVoiceIndex()
             line.path = path;
             line.text = text;
             line.tags = inferVoiceTags(text);
+            line.concepts = inferConcepts(text, false);
             line.emotion = inferVoiceEmotion(text, line.tags);
             lines.append(line);
         }
@@ -186,6 +264,9 @@ int scoreVoiceLine(const VoiceLine &line, const QString &replyText, const QStrin
                    const QSet<QString> &replyTags)
 {
     int score = 0;
+    const QSet<QString> replyConcepts = inferConcepts(replyText, true);
+    const QSet<QString> replyKeywords = extractQuotedKeywords(replyText);
+    const QSet<QString> lineKeywords = extractQuotedKeywords(line.text);
 
     if (line.emotion == emotion)
         score += 10;
@@ -195,9 +276,25 @@ int scoreVoiceLine(const VoiceLine &line, const QString &replyText, const QStrin
             score += 8;
     }
 
+    for (const QString &concept : replyConcepts) {
+        if (line.concepts.contains(concept))
+            score += 16;
+    }
+
+    for (const QString &keyword : replyKeywords) {
+        if (lineKeywords.contains(keyword))
+            score += 4;
+    }
+
     if (replyText.contains(QStringLiteral("？")) || replyText.contains(QStringLiteral("?"))) {
         if (line.text.contains(QStringLiteral("？")) || line.text.contains(QStringLiteral("?")))
             score += 2;
+    }
+
+    if ((replyConcepts.contains(QStringLiteral("care")) && line.emotion == QStringLiteral("concerned"))
+        || (replyConcepts.contains(QStringLiteral("shy")) && line.emotion == QStringLiteral("shy"))
+        || (replyConcepts.contains(QStringLiteral("happy")) && line.emotion == QStringLiteral("happy"))) {
+        score += 6;
     }
 
     if (replyText.size() <= 12 && line.text.size() <= 18)
