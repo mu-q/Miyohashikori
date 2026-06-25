@@ -26,6 +26,7 @@ struct VoiceLine
     QString emotion;
     QSet<QString> tags;
     QSet<QString> concepts;
+    QSet<QString> zhHints;
 };
 
 struct SemanticRule
@@ -67,6 +68,53 @@ const SemanticRule kSemanticRules[] = {
      {"行きましょう", "行きますか", "どうですか", "ませんか", "一緒に"}},
     {"encourage", {"加油", "别担心", "会好的", "慢慢来", "没关系"},
      {"頑張", "大丈夫", "平気", "ゆっくり", "無理しない"}}
+};
+
+struct HintRule
+{
+    const char *jpPattern;
+    const char *zhHint;
+};
+
+const HintRule kHintRules[] = {
+    {"おはよう", "早上好"},
+    {"おやすみ", "晚安"},
+    {"大丈夫", "没事吧"},
+    {"お大事", "注意身体"},
+    {"ありがとう", "谢谢"},
+    {"ごめん", "对不起"},
+    {"すみません", "不好意思"},
+    {"一緒", "一起"},
+    {"行きましょう", "一起去吧"},
+    {"行きますか", "要一起去吗"},
+    {"手伝", "我来帮你"},
+    {"好き", "喜欢你"},
+    {"そば", "在你身边"},
+    {"隣", "陪在你身边"},
+    {"待って", "等一下"},
+    {"いてください", "待在这里"},
+    {"ミルクティ", "奶茶"},
+    {"紅茶", "红茶"},
+    {"ケーキ", "蛋糕"},
+    {"チョコ", "巧克力"},
+    {"ミルク", "牛奶"},
+    {"温か", "暖和"},
+    {"暖か", "暖和"},
+    {"無理", "别勉强"},
+    {"休", "休息一下"},
+    {"風邪", "小心感冒"},
+    {"眠", "困了"},
+    {"寝", "去睡吧"},
+    {"嬉", "很高兴"},
+    {"よかった", "太好了"},
+    {"恥", "害羞"},
+    {"照", "不好意思"},
+    {"だめ", "不可以"},
+    {"ダメ", "不行"},
+    {"いけません", "不可以"},
+    {"頑張", "加油"},
+    {"平気", "没关系"},
+    {"ゆっくり", "慢慢来"}
 };
 
 QStringList commonVoices()
@@ -153,6 +201,43 @@ QSet<QString> inferConcepts(const QString &text, bool chineseText)
     }
 
     return concepts;
+}
+
+QSet<QString> inferChineseHints(const QString &jpText, const QSet<QString> &concepts)
+{
+    QSet<QString> hints;
+
+    for (const HintRule &rule : kHintRules) {
+        const QString pattern = QString::fromUtf8(rule.jpPattern);
+        if (jpText.contains(pattern))
+            hints.insert(QString::fromUtf8(rule.zhHint));
+    }
+
+    auto addConceptHint = [&hints, &concepts](const QString &concept, const QStringList &zhValues) {
+        if (!concepts.contains(concept))
+            return;
+        for (const QString &value : zhValues)
+            hints.insert(value);
+    };
+
+    addConceptHint(QStringLiteral("care"),
+                   {QStringLiteral("关心你"), QStringLiteral("注意身体"), QStringLiteral("休息一下")});
+    addConceptHint(QStringLiteral("shy"),
+                   {QStringLiteral("有点害羞"), QStringLiteral("不好意思"), QStringLiteral("突然这样会害羞")});
+    addConceptHint(QStringLiteral("happy"),
+                   {QStringLiteral("真好"), QStringLiteral("很开心"), QStringLiteral("太好了")});
+    addConceptHint(QStringLiteral("together"),
+                   {QStringLiteral("一起"), QStringLiteral("陪着你"), QStringLiteral("我来帮你")});
+    addConceptHint(QStringLiteral("sweets"),
+                   {QStringLiteral("蛋糕"), QStringLiteral("奶茶"), QStringLiteral("甜点")});
+    addConceptHint(QStringLiteral("affection"),
+                   {QStringLiteral("在你身边"), QStringLiteral("陪在你身边"), QStringLiteral("喜欢你")});
+    addConceptHint(QStringLiteral("sleep"),
+                   {QStringLiteral("困了"), QStringLiteral("早点休息"), QStringLiteral("晚安")});
+    addConceptHint(QStringLiteral("encourage"),
+                   {QStringLiteral("加油"), QStringLiteral("别担心"), QStringLiteral("慢慢来")});
+
+    return hints;
 }
 
 QSet<QString> extractQuotedKeywords(const QString &text)
@@ -250,6 +335,7 @@ const QVector<VoiceLine> &loadVoiceIndex()
             line.text = text;
             line.tags = inferVoiceTags(text);
             line.concepts = inferConcepts(text, false);
+            line.zhHints = inferChineseHints(text, line.concepts);
             line.emotion = inferVoiceEmotion(text, line.tags);
             lines.append(line);
         }
@@ -267,23 +353,41 @@ int scoreVoiceLine(const VoiceLine &line, const QString &replyText, const QStrin
     const QSet<QString> replyConcepts = inferConcepts(replyText, true);
     const QSet<QString> replyKeywords = extractQuotedKeywords(replyText);
     const QSet<QString> lineKeywords = extractQuotedKeywords(line.text);
+    const QSet<QString> lineHintKeywords = extractQuotedKeywords(QStringList(line.zhHints.values()).join(QStringLiteral(" ")));
+    bool hasSemanticAnchor = false;
 
     if (line.emotion == emotion)
         score += 10;
 
     for (const QString &tag : replyTags) {
-        if (line.tags.contains(tag))
+        if (line.tags.contains(tag)) {
             score += 8;
+            hasSemanticAnchor = true;
+        }
     }
 
     for (const QString &concept : replyConcepts) {
-        if (line.concepts.contains(concept))
+        if (line.concepts.contains(concept)) {
             score += 16;
+            hasSemanticAnchor = true;
+        }
     }
 
     for (const QString &keyword : replyKeywords) {
-        if (lineKeywords.contains(keyword))
+        if (lineKeywords.contains(keyword)) {
             score += 4;
+            hasSemanticAnchor = true;
+        }
+        if (lineHintKeywords.contains(keyword)) {
+            score += 12;
+            hasSemanticAnchor = true;
+        }
+        for (const QString &hint : line.zhHints) {
+            if (hint.contains(keyword) || replyText.contains(hint)) {
+                score += 8;
+                hasSemanticAnchor = true;
+            }
+        }
     }
 
     if (replyText.contains(QStringLiteral("？")) || replyText.contains(QStringLiteral("?"))) {
@@ -299,6 +403,9 @@ int scoreVoiceLine(const VoiceLine &line, const QString &replyText, const QStrin
 
     if (replyText.size() <= 12 && line.text.size() <= 18)
         score += 1;
+
+    if ((!replyConcepts.isEmpty() || !replyTags.isEmpty()) && !hasSemanticAnchor)
+        score -= 20;
 
     return score;
 }
