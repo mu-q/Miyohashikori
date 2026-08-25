@@ -1,4 +1,4 @@
-QT       += core gui network multimedia
+QT       += core gui network multimedia multimediawidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -14,12 +14,16 @@ SOURCES += \
     core/config/configmanager.cpp \
     core/spritecatalog.cpp \
     core/voiceplayer.cpp \
+    core/conversationlog.cpp \
+    core/pomodorocontroller.cpp \
     core/ai/chathistory.cpp \
     core/ai/emotionparser.cpp \
     core/ai/nullaisession.cpp \
     core/ai/openaichatsession.cpp \
     ui/characterspriteview.cpp \
-    ui/replybubble.cpp
+    ui/replybubble.cpp \
+    ui/chatlogwindow.cpp \
+    ui/focuswindow.cpp
 
 RESOURCES += \
     hyori_assets.qrc
@@ -31,13 +35,17 @@ HEADERS += \
     core/config/configmanager.h \
     core/spritecatalog.h \
     core/voiceplayer.h \
+    core/conversationlog.h \
+    core/pomodorocontroller.h \
     core/ai/chathistory.h \
     core/ai/emotionparser.h \
     core/ai/iaisession.h \
     core/ai/nullaisession.h \
     core/ai/openaichatsession.h \
     ui/characterspriteview.h \
-    ui/replybubble.h
+    ui/replybubble.h \
+    ui/chatlogwindow.h \
+    ui/focuswindow.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

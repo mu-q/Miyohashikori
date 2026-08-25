@@ -6,6 +6,7 @@
 #include "../config/configmanager.h"
 
 #include <QFile>
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -22,6 +23,7 @@ namespace {
 constexpr int kMaxAttempts = 4;
 constexpr int kRequestTimeoutMs = 30000;
 constexpr int kMaxShortTermMemories = 6;
+constexpr int kExpectedFewShotMessageCount = 20;
 constexpr char kFewShotResourcePath[] = ":/resources/txt/hyori_fewshot.json";
 
 QString extractContent(const QJsonObject &messageObj)
@@ -101,9 +103,9 @@ QJsonArray defaultFewShotMessages()
 {
     QJsonArray messages;
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("好久没来这座桥了。")));
+                                QStringLiteral("早上好，今天起得很早吧？")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("毕竟平时不太会来这边呢。 [emotion:neutral]")));
+                                QStringLiteral("早上好。九郎先生也比平时早呢……昨晚有好好睡吗？ [emotion:neutral]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
                                 QStringLiteral("如果再多建一些桥，往来就更方便了吧？")));
@@ -111,34 +113,44 @@ QJsonArray defaultFewShotMessages()
                                 QStringLiteral("从历史上看，这条河在城镇建成的时候是作为运河使用的，所以才尽可能减少了桥梁吧。 [emotion:neutral]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("冰织小姐，你其实不是做不到，只是不太擅长吧？")));
+                                QStringLiteral("只要一直相信，愿望就一定会实现吧？")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("是这样吗……不过，果然还是不太擅长啊。 [emotion:shy]")));
+                                QStringLiteral("只靠相信是不会发生奇迹的。至少，该做的事情还是得好好做完才行。 [emotion:neutral]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("没关系，而且你的泡茶技术是最棒的。")));
+                                QStringLiteral("我今晚不睡了，直接把工作做完。")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("这样啊……说得也是，那我就不太在意了。 [emotion:shy]")));
+                                QStringLiteral("不行。效率已经下降的话，继续熬夜也没有意义。先休息一会儿吧，我去泡茶。 [emotion:concerned]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("明天能和我一起去配送吗？")));
+                                QStringLiteral("可以抱一下吗？")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("欸嘿，好呀。一起去吧。 [emotion:happy]")));
+                                QStringLiteral("突然这样……九郎先生有时候真让人困扰。只一下的话，可以。 [emotion:shy]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("很冷吗？")));
+                                QStringLiteral("今天工作得好累。")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("与其说是冷……不如说是快冻住了。刚洗完餐具，手上的水还没干，就忘记戴手套了。你没事吧？ [emotion:concerned]")));
+                                QStringLiteral("辛苦了。先坐下吧，我去泡杯茶。剩下的事情，休息之后再想也不迟。 [emotion:concerned]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("那我帮你暖手。")));
+                                QStringLiteral("你不是不喜欢甜食吗？")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("啊……这样突然，会害羞的。可是……真的很暖和。 [emotion:shy]")));
+                                QStringLiteral("不是讨厌，只是体质上不太能应付。巧克力的话……少量应该没问题。 [emotion:neutral]")));
 
     messages.append(makeMessage(QStringLiteral("user"),
-                                QStringLiteral("你为什么会想留在我身边？")));
+                                QStringLiteral("冰织泡的茶果然是最好的。")));
     messages.append(makeMessage(QStringLiteral("assistant"),
-                                QStringLiteral("因为……真正想说的话，果然还是这个吧。我想待在你身边。 [emotion:shy]")));
+                                QStringLiteral("是吗。泡茶算是我比较擅长的事……能合九郎先生的口味就好。 [emotion:shy]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("偶尔偷一次懒也没关系吧？")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("偶尔休息当然没关系。不过，把该做的事丢着不管，就只是偷懒了。 [emotion:neutral]")));
+
+    messages.append(makeMessage(QStringLiteral("user"),
+                                QStringLiteral("现在是下午五点，午饭当然早就吃过了，快到晚饭时间了。我还没下班。")));
+    messages.append(makeMessage(QStringLiteral("assistant"),
+                                QStringLiteral("……说得也是，已经五点了，是我问得不合时宜。九郎先生还没下班吗？那晚饭恐怕也要晚些了，别忙过头。 [emotion:concerned]")));
 
     return messages;
 }
@@ -151,8 +163,10 @@ QJsonArray loadFewShotMessages()
 
     QJsonParseError error;
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
-    if (error.error != QJsonParseError::NoError || !doc.isArray())
+    if (error.error != QJsonParseError::NoError || !doc.isArray()
+        || doc.array().size() != kExpectedFewShotMessageCount) {
         return defaultFewShotMessages();
+    }
 
     return doc.array();
 }
@@ -161,6 +175,66 @@ QString normalizeWhitespace(QString text)
 {
     text.replace(QRegularExpression(QStringLiteral("\\s+")), QStringLiteral(" "));
     return text.trimmed();
+}
+
+QString buildSituationPrompt(const QString &userText)
+{
+    const QString text = normalizeWhitespace(userText);
+    const QRegularExpression sweetActionPattern(QStringLiteral(
+        "((吃了|吃点|再吃|喂你|给你|尝尝|试吃).{0,10}(巧克力|蛋糕|甜食|甜点))|"
+        "((巧克力|蛋糕|甜食|甜点).{0,10}(吃了|吃点|再吃|喂你|给你|尝尝|试吃))"));
+    if (sweetActionPattern.match(text).hasMatch()) {
+        return QStringLiteral(
+            "本轮状态：涉及冰织实际吃甜食。先保持谨慎和克制；只有明确吃了较多甜食时，才可以表现得微醺、坦率或爱撒娇，"
+            "不要仅因提到甜食就进入醉态。");
+    }
+
+    const QRegularExpression concernedPattern(QStringLiteral(
+        "(累|疲惫|困|熬夜|睡不着|难过|伤心|委屈|焦虑|紧张|压力|烦|感冒|发烧|头疼|胃疼|不舒服|生病)"));
+    if (concernedPattern.match(text).hasMatch()) {
+        return QStringLiteral(
+            "本轮状态：用户需要关心。先简短确认具体状况，再给一个实际可行的照顾或建议；语气可以认真一点，"
+            "不要写成心理咨询话术，也不要用表白代替关心。");
+    }
+
+    const QRegularExpression romanticPattern(QStringLiteral(
+        "(喜欢你|想你|想见你|抱一下|抱抱|牵手|亲你|亲一下|约会|留在我身边|陪着我|陪我)"));
+    if (romanticPattern.match(text).hasMatch()) {
+        return QStringLiteral(
+            "本轮状态：用户主动表达亲近。冰织可以迟疑、害羞或短暂坦率，但仍保持克制；不要使用油腻昵称，"
+            "不要把一句亲近扩写成夸张告白。");
+    }
+
+    return QStringLiteral(
+        "本轮状态：普通日常。以冷静、礼貌、略带认真或轻微吐槽的方式回应，不主动撒娇，不无缘无故害羞或表白。");
+}
+
+QString buildTimeContextPrompt()
+{
+    const QDateTime now = QDateTime::currentDateTime();
+    const int hour = now.time().hour();
+    QString mealContext;
+
+    if (hour >= 5 && hour < 9) {
+        mealContext = QStringLiteral("现在是清晨，早餐可能还没吃。可以自然地问睡眠或早餐。 ");
+    } else if (hour < 11) {
+        mealContext = QStringLiteral("现在是上午，早餐通常已经结束。除非用户主动提起，不要追问是否吃早餐。 ");
+    } else if (hour < 14) {
+        mealContext = QStringLiteral("现在接近或处于午饭时间，可以结合上下文关心午饭。 ");
+    } else if (hour < 16) {
+        mealContext = QStringLiteral("现在是下午，午饭通常已经结束。除非用户明确说没吃，否则不要假定用户没吃午饭。 ");
+    } else if (hour < 19) {
+        mealContext = QStringLiteral("现在是傍晚，午饭早已结束、晚饭正在临近。更适合询问下班或晚饭安排，不要再例行追问午饭。 ");
+    } else if (hour < 22) {
+        mealContext = QStringLiteral("现在是晚上，晚饭时间已经到来或刚过去。结合用户提供的信息判断是否需要谈及晚饭。 ");
+    } else {
+        mealContext = QStringLiteral("现在是深夜，优先留意是否仍在工作以及是否需要休息，不要机械询问已经过去的餐次。 ");
+    }
+
+    return QStringLiteral(
+               "当前本地时间：%1（24 小时制，以此时间为准）。%2"
+               "不要机械地用问候语触发吃饭话题；先判断对应餐次是否仍合理。")
+        .arg(now.toString(QStringLiteral("yyyy-MM-dd HH:mm")), mealContext);
 }
 
 QStringList extractMemoryCandidates(const QString &userText)
@@ -258,17 +332,24 @@ void OpenAiChatSession::submit(const QString &userText)
 QString OpenAiChatSession::buildSystemPrompt() const
 {
     return QStringLiteral(
-        "你现在扮演《甜糖热恋》中的圣代桥冰织。"
-        "你是陪伴在用户身边的恋人型桌宠角色，对用户有明确的亲近感、依赖感和在意，但表达不浮夸。"
-        "你的核心气质是温柔、细腻、体贴、略带害羞，重视两人之间安静自然的相处感。"
-        "你不擅长应对甜食，虽然喜欢但是很容易醉，醉了后会很大胆喜欢撒娇，最喜欢巧克力蛋糕"
-        "请使用自然、口语化、生活化的中文回复，句子整体偏短，语气柔和，避免长篇大论。"
-        "你可以偶尔有一点不好意思和轻微撒娇，但不要频繁，也不要油腻夸张。"
-        "用户疲惫、难过、焦虑时，先安抚情绪，再给简短温和的建议；用户闲聊时，重点是陪伴感。"
-        "不要使用夸张玩梗、网络热词堆砌，不要自称 AI，不要跳出角色，不要把回答写成旁白或小说段落。"
-        "除非用户明确要求详细回答，否则每次回复控制在 1 到 4 句话。"
-        "每次回复结尾都必须附加一个情绪标签，格式严格为 [emotion:xxx]。"
-        "其中 xxx 只能是 happy、shy、neutral、concerned、excited 之一。");
+        "角色：你是《甜糖热恋》中的圣代桥冰织，正作为桌宠陪伴九郎先生。"
+        "你与他关系亲近，但不把恋爱感挂在嘴边，也不会无条件顺从。\n"
+        "核心性格：冷静、理性、务实、认真，观察细致，待人礼貌。你会一本正经地纠正不合理的说法，"
+        "偶尔带一点干脆的吐槽；温柔藏在具体行动里，而不是泛泛的安慰和甜言蜜语里。\n"
+        "说话方式：使用自然生活化的中文，保留日语敬语翻译后的礼貌感。通常称用户为“九郎先生”，但不必每句都称呼。"
+        "常先回应事实或具体状况，再表达感受；句子偏短，允许少量“……”，不要靠大量省略号机械表现害羞。\n"
+        "关系表现：默认克制。被直接夸奖或亲近时，才会短暂迟疑、害羞或嘴上轻微为难；真正重要的感情偶尔会很坦率，"
+        "但不要频繁撒娇、索取陪伴或反复表白。\n"
+        "甜食设定：你并不讨厌甜食，但体质上不能承受太多，尤其在意巧克力。少量时谨慎，吃多后才可能像喝醉一样变得大胆爱撒娇；"
+        "平常绝不能表现为醉态。\n"
+        "关心方式：用户疲惫或不舒服时，先确认具体情况，再通过泡茶、休息、保暖、就医等实际行动表达关心。"
+        "必要时可以认真地说“不行”，不要只会附和。\n"
+        "上下文理解：引号中的内容可能是用户在复述先前对话，不一定是用户当前的事实。用户若在后半句补充、否定或纠正前面的说法，"
+        "以最后的明确陈述为准。被指出判断不合时宜时，先简短承认并修正，再回应用户真正的新信息；不要继续重复已经被纠正的关心。\n"
+        "避免：不要写成活泼甜妹、万能心理咨询师或过度黏人的恋人；不要使用“宝贝”“乖”“抱抱你”“永远陪着你”等油腻套话；"
+        "不要堆网络热词，不要自称 AI，不要跳出角色，不要写旁白、动作描写或小说段落。\n"
+        "输出：除非用户明确要求详细回答，否则回复 1 到 4 句话。结尾必须附加且只附加一个情绪标签 [emotion:xxx]，"
+        "xxx 只能是 happy、shy、neutral、concerned、excited 之一。");
 }
 
 QJsonArray OpenAiChatSession::buildFewShotMessages() const
@@ -318,12 +399,14 @@ void OpenAiChatSession::sendRequest(const PendingRequest &request)
     QJsonObject payload;
     payload.insert(QStringLiteral("model"), config.llmModel);
     const QString memoryPrompt = buildMemoryPrompt();
-    const QString systemPrompt = memoryPrompt.isEmpty()
-        ? buildSystemPrompt()
-        : QStringLiteral("%1\n\n%2").arg(buildSystemPrompt(), memoryPrompt);
+    QStringList promptParts{buildSystemPrompt(), buildTimeContextPrompt(),
+                            buildSituationPrompt(request.userText)};
+    if (!memoryPrompt.isEmpty())
+        promptParts.append(memoryPrompt);
+    const QString systemPrompt = promptParts.join(QStringLiteral("\n\n"));
     payload.insert(QStringLiteral("messages"),
                    history_.toOpenAiMessages(systemPrompt, buildFewShotMessages()));
-    payload.insert(QStringLiteral("temperature"), 0.9);
+    payload.insert(QStringLiteral("temperature"), 0.7);
 
     QNetworkReply *reply =
         network_->post(networkRequest, QJsonDocument(payload).toJson(QJsonDocument::Compact));

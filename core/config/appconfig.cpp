@@ -4,6 +4,9 @@
 
 namespace {
 constexpr double kDefaultVolume = 0.8;
+constexpr int kDefaultWorkMinutes = 25;
+constexpr int kDefaultShortBreakMinutes = 5;
+constexpr int kDefaultLongBreakMinutes = 15;
 
 QString normalizeLlmEndpoint(const QString &endpoint)
 {
@@ -28,6 +31,11 @@ AppConfig AppConfig::defaults()
     config.llmModel = QStringLiteral("deepseek-chat");
     config.voiceEnabled = true;
     config.volume = kDefaultVolume;
+    config.pomodoroWorkMinutes = kDefaultWorkMinutes;
+    config.pomodoroShortBreakMinutes = kDefaultShortBreakMinutes;
+    config.pomodoroLongBreakMinutes = kDefaultLongBreakMinutes;
+    config.pomodoroPhase = QStringLiteral("work");
+    config.pomodoroRemainingSeconds = kDefaultWorkMinutes * 60;
     return config;
 }
 
@@ -48,6 +56,16 @@ AppConfig AppConfig::fromJson(const QJsonObject &obj)
     config.ttsEndpoint = obj.value(QStringLiteral("ttsEndpoint")).toString();
     config.voiceEnabled = obj.value(QStringLiteral("voiceEnabled")).toBool(config.voiceEnabled);
     config.volume = qBound(0.0, obj.value(QStringLiteral("volume")).toDouble(config.volume), 1.0);
+    config.backgroundVideoPath = obj.value(QStringLiteral("backgroundVideoPath")).toString().trimmed();
+    config.pomodoroWorkMinutes = qBound(1, obj.value(QStringLiteral("pomodoroWorkMinutes")).toInt(config.pomodoroWorkMinutes), 180);
+    config.pomodoroShortBreakMinutes = qBound(1, obj.value(QStringLiteral("pomodoroShortBreakMinutes")).toInt(config.pomodoroShortBreakMinutes), 60);
+    config.pomodoroLongBreakMinutes = qBound(1, obj.value(QStringLiteral("pomodoroLongBreakMinutes")).toInt(config.pomodoroLongBreakMinutes), 120);
+    const QString phase = obj.value(QStringLiteral("pomodoroPhase")).toString().trimmed();
+    if (phase == QStringLiteral("work") || phase == QStringLiteral("shortBreak") || phase == QStringLiteral("longBreak"))
+        config.pomodoroPhase = phase;
+    config.pomodoroRemainingSeconds = qMax(0, obj.value(QStringLiteral("pomodoroRemainingSeconds")).toInt(config.pomodoroRemainingSeconds));
+    config.pomodoroCompletedCycles = qMax(0, obj.value(QStringLiteral("pomodoroCompletedCycles")).toInt(config.pomodoroCompletedCycles));
+    config.pomodoroCompletedDate = obj.value(QStringLiteral("pomodoroCompletedDate")).toString();
 
     const QJsonObject posObj = obj.value(QStringLiteral("windowPos")).toObject();
     if (posObj.contains(QStringLiteral("x")) && posObj.contains(QStringLiteral("y"))) {
@@ -67,6 +85,14 @@ QJsonObject AppConfig::toJson() const
     obj.insert(QStringLiteral("ttsEndpoint"), ttsEndpoint);
     obj.insert(QStringLiteral("voiceEnabled"), voiceEnabled);
     obj.insert(QStringLiteral("volume"), qBound(0.0, volume, 1.0));
+    obj.insert(QStringLiteral("backgroundVideoPath"), backgroundVideoPath);
+    obj.insert(QStringLiteral("pomodoroWorkMinutes"), qBound(1, pomodoroWorkMinutes, 180));
+    obj.insert(QStringLiteral("pomodoroShortBreakMinutes"), qBound(1, pomodoroShortBreakMinutes, 60));
+    obj.insert(QStringLiteral("pomodoroLongBreakMinutes"), qBound(1, pomodoroLongBreakMinutes, 120));
+    obj.insert(QStringLiteral("pomodoroPhase"), pomodoroPhase);
+    obj.insert(QStringLiteral("pomodoroRemainingSeconds"), qMax(0, pomodoroRemainingSeconds));
+    obj.insert(QStringLiteral("pomodoroCompletedCycles"), qMax(0, pomodoroCompletedCycles));
+    obj.insert(QStringLiteral("pomodoroCompletedDate"), pomodoroCompletedDate);
 
     QJsonObject posObj;
     posObj.insert(QStringLiteral("x"), windowPos.x());

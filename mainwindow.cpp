@@ -2,6 +2,7 @@
 
 #include "core/ai/iaisession.h"
 #include "core/ai/openaichatsession.h"
+#include "core/conversationlog.h"
 #include "core/apppaths.h"
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
@@ -9,10 +10,14 @@
 #include "core/voiceplayer.h"
 #include "ui/characterspriteview.h"
 #include "ui/replybubble.h"
+#include "ui/focuswindow.h"
+#include "ui/chatlogwindow.h"
 
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QLineEdit>
 #include <QMenu>
@@ -34,6 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
     , configManager_(new ConfigManager(this))
     , ai_(nullptr)
     , voicePlayer_(new VoicePlayer(this))
+    , conversationLog_(new ConversationLog(this))
+    , chatLogWindow_(new ChatLogWindow(conversationLog_, this))
 {
     applyWindowChrome();
     configManager_->load();
@@ -74,6 +81,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         setReplyStatus(QStringLiteral("正在等待冰织回复…"));
         setInputWaiting(true);
+        conversationLog_->addUser(text);
         ai_->submit(text);
         inputLine_->clear();
     });
@@ -106,6 +114,7 @@ void MainWindow::wireAiSession()
 {
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
         lastAssistantText_ = text;
+        conversationLog_->addHyori(text);
         setReplyMessage(text);
         setInputWaiting(false);
     });
@@ -327,6 +336,12 @@ void MainWindow::endDrag()
 void MainWindow::showPetMenu(const QPoint &globalPos)
 {
     QMenu menu;
+    menu.addAction(QStringLiteral("本次对话记录"), this, &MainWindow::showChatHistory);
+    menu.addAction(QStringLiteral("打开专注模式"), this, &MainWindow::openFocusWindow);
+    menu.addAction(QStringLiteral("选择背景视频"), this, &MainWindow::chooseBackgroundVideo);
+    QAction *clearVideo = menu.addAction(QStringLiteral("清除背景视频"), this, &MainWindow::clearBackgroundVideo);
+    clearVideo->setEnabled(!configManager_->config().backgroundVideoPath.isEmpty());
+    menu.addSeparator();
     QMenu *modesMenu = menu.addMenu(QStringLiteral("切换模式"));
     const QStringList names = catalog_->modeNames();
     const QString current = catalog_->currentMode();
@@ -344,4 +359,46 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
     menu.addSeparator();
     menu.addAction(QStringLiteral("退出"), qApp, &QApplication::quit);
     menu.exec(globalPos);
+}
+
+void MainWindow::openFocusWindow()
+{
+    if (!focusWindow_)
+        focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_, this);
+    focusWindow_->show();
+    focusWindow_->raise();
+    focusWindow_->activateWindow();
+}
+
+void MainWindow::showChatHistory()
+{
+    chatLogWindow_->show();
+    chatLogWindow_->raise();
+    chatLogWindow_->activateWindow();
+}
+
+void MainWindow::chooseBackgroundVideo()
+{
+    const QString file = QFileDialog::getOpenFileName(
+        this, QStringLiteral("选择专注背景视频"),
+        QFileInfo(configManager_->config().backgroundVideoPath).absolutePath(),
+        QStringLiteral("视频文件 (*.mp4 *.mkv *.avi *.mov *.webm);;所有文件 (*)"));
+    if (file.isEmpty())
+        return;
+    AppConfig config = configManager_->config();
+    config.backgroundVideoPath = file;
+    configManager_->setConfig(config);
+    configManager_->save();
+    if (focusWindow_)
+        focusWindow_->reloadBackground();
+}
+
+void MainWindow::clearBackgroundVideo()
+{
+    AppConfig config = configManager_->config();
+    config.backgroundVideoPath.clear();
+    configManager_->setConfig(config);
+    configManager_->save();
+    if (focusWindow_)
+        focusWindow_->reloadBackground();
 }

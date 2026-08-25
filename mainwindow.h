@@ -14,6 +14,9 @@ class QRect;
 class ReplyBubble;
 class SpriteCatalog;
 class VoicePlayer;
+class FocusWindow;
+class ConversationLog;
+class ChatLogWindow;
 
 class MainWindow : public QWidget
 {
@@ -41,6 +44,10 @@ private:
     void applyWindowPlacement();
     void clampWindowToScreen(const QRect &avail);
     void showPetMenu(const QPoint &globalPos);
+    void openFocusWindow();
+    void chooseBackgroundVideo();
+    void clearBackgroundVideo();
+    void showChatHistory();
 
     void startDrag(const QPoint &globalPress);
     void updateDrag(const QPoint &globalPos);
@@ -53,6 +60,9 @@ private:
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
     VoicePlayer *voicePlayer_ = nullptr;
+    ConversationLog *conversationLog_ = nullptr;
+    ChatLogWindow *chatLogWindow_ = nullptr;
+    FocusWindow *focusWindow_ = nullptr;
     QString lastAssistantText_;
 
     bool dragging_ = false;
