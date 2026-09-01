@@ -1,15 +1,38 @@
 ﻿#include "replybubble.h"
 
-#include <QFontMetrics>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QTextLayout>
+#include <QTextOption>
 
 namespace {
 constexpr int kMaxTextWidth = 228;
-constexpr int kHorizontalPadding = 32;
-constexpr int kVerticalPadding = 24;
-constexpr int kMinBubbleWidth = 200;
-constexpr int kMinBubbleHeight = 52;
+constexpr int kTextHorizontalInset = 18;
+constexpr int kTextVerticalInset = 20;
+constexpr int kBubbleWidth = 296;
+constexpr int kMinBubbleHeight = 68;
+
+int wrappedTextHeight(const QString &text, const QFont &font)
+{
+    QTextLayout layout(text, font);
+    QTextOption option;
+    option.setAlignment(Qt::AlignHCenter);
+    option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    layout.setTextOption(option);
+
+    qreal height = 0;
+    layout.beginLayout();
+    while (true) {
+        QTextLine line = layout.createLine();
+        if (!line.isValid())
+            break;
+        line.setLineWidth(kMaxTextWidth);
+        line.setPosition(QPointF(0, height));
+        height += line.height();
+    }
+    layout.endLayout();
+    return qCeil(height);
+}
 } // namespace
 
 ReplyBubble::ReplyBubble(QWidget *parent)
@@ -42,20 +65,18 @@ void ReplyBubble::setTone(Tone tone)
 QSize ReplyBubble::sizeHint() const
 {
     if (text_.isEmpty())
-        return QSize(kMinBubbleWidth, kMinBubbleHeight);
+        return QSize(kBubbleWidth, kMinBubbleHeight);
 
-    const QFontMetrics metrics(font());
-    const QRect bounds =
-        metrics.boundingRect(0, 0, kMaxTextWidth, 10000, Qt::AlignCenter | Qt::TextWordWrap, text_);
-
-    const int width = qBound(kMinBubbleWidth, bounds.width() + kHorizontalPadding, 296);
-    const int height = qMax(kMinBubbleHeight, bounds.height() + kVerticalPadding);
-    return QSize(width, height);
+    // 测量宽度不大于实际绘制宽度，保证绘制时即使中文自动换行也不会多出一行。
+    const int contentHeight = wrappedTextHeight(text_, font());
+    const int height = qMax(kMinBubbleHeight, contentHeight + kTextVerticalInset * 2 + 12);
+    return QSize(kBubbleWidth, height);
 }
 
 QRect ReplyBubble::textRect() const
 {
-    return rect().adjusted(18, 14, -18, -14);
+    return rect().adjusted(kTextHorizontalInset, kTextVerticalInset,
+                           -kTextHorizontalInset, -kTextVerticalInset);
 }
 
 QColor ReplyBubble::textColor() const

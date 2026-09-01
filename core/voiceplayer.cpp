@@ -18,6 +18,7 @@
 
 namespace {
 constexpr char kVoiceIndexResourcePath[] = ":/resources/txt/ko_voice_index.json";
+constexpr int kMinVoiceMatchScore = 24;
 
 struct VoiceLine
 {
@@ -116,18 +117,6 @@ const HintRule kHintRules[] = {
     {"平気", "没关系"},
     {"ゆっくり", "慢慢来"}
 };
-
-QStringList commonVoices()
-{
-    return {
-        QStringLiteral("ko/ko0040.ogg"),
-        QStringLiteral("ko/ko0070.ogg"),
-        QStringLiteral("ko/ko3210.ogg"),
-        QStringLiteral("ko/ko3231.ogg"),
-        QStringLiteral("ko/ko3261.ogg"),
-        QStringLiteral("ko/ko3275.ogg")
-    };
-}
 
 QSet<QString> inferVoiceTags(const QString &text)
 {
@@ -347,7 +336,7 @@ const QVector<VoiceLine> &loadVoiceIndex()
 }
 
 int scoreVoiceLine(const VoiceLine &line, const QString &replyText, const QString &emotion,
-                   const QSet<QString> &replyTags)
+                   const QSet<QString> &replyTags, bool *hasSemanticAnchorResult)
 {
     int score = 0;
     const QSet<QString> replyConcepts = inferConcepts(replyText, true);
@@ -407,6 +396,9 @@ int scoreVoiceLine(const VoiceLine &line, const QString &replyText, const QStrin
     if ((!replyConcepts.isEmpty() || !replyTags.isEmpty()) && !hasSemanticAnchor)
         score -= 20;
 
+    if (hasSemanticAnchorResult)
+        *hasSemanticAnchorResult = hasSemanticAnchor;
+
     return score;
 }
 
@@ -426,6 +418,7 @@ void VoicePlayer::playReply(const QString &replyText, const QString &emotion, co
         return;
 
     setVolume(config.volume);
+    player_->stop();
 
     QStringList matchedVoices;
     const QSet<QString> replyTags = inferReplyTags(replyText);
@@ -433,7 +426,11 @@ void VoicePlayer::playReply(const QString &replyText, const QString &emotion, co
     int bestScore = -1;
 
     for (const VoiceLine &line : index) {
-        const int score = scoreVoiceLine(line, replyText, emotion.trimmed().toLower(), replyTags);
+        bool hasSemanticAnchor = false;
+        const int score = scoreVoiceLine(line, replyText, emotion.trimmed().toLower(),
+                                         replyTags, &hasSemanticAnchor);
+        if (!hasSemanticAnchor || score < kMinVoiceMatchScore)
+            continue;
         if (score < bestScore)
             continue;
 
@@ -444,15 +441,10 @@ void VoicePlayer::playReply(const QString &replyText, const QString &emotion, co
         matchedVoices.append(line.path);
     }
 
-    QString filePath;
-    if (!matchedVoices.isEmpty() && bestScore > 0)
-        filePath = pickRandomVoice(matchedVoices);
-    if (filePath.isEmpty())
-        filePath = pickRandomVoice(commonVoices());
+    const QString filePath = pickRandomVoice(matchedVoices);
     if (filePath.isEmpty())
         return;
 
-    player_->stop();
     player_->setSource(QUrl::fromLocalFile(filePath));
     player_->play();
 }
