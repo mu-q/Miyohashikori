@@ -1,0 +1,20 @@
+{
+  "source_index": "D:\\个人\\GitHub\\Miyohashikori\\resources\\txt\\ko_voice_index.json",
+  "voice_root": "D:\\个人\\GitHub\\Miyohashikori\\resources\\voice",
+  "output_list": "D:\\个人\\GitHub\\Miyohashikori\\resources\\training\\hyori_v2pro_train.list",
+  "source_entries": 4349,
+  "eligible_entries": 2199,
+  "selected_entries": 250,
+  "selected_minutes": 21.04,
+  "minimum_duration_seconds": 3.83,
+  "maximum_duration_seconds": 6.075,
+  "average_duration_seconds": 5.05,
+  "missing_audio": 0,
+  "rejected": {
+    "duration": 1778,
+    "excluded_content": 121,
+    "repeated_vocalisation": 3,
+    "text_length": 223,
+    "too_little_japanese": 25
+  }
+}
