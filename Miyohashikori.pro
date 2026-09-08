@@ -13,6 +13,7 @@ SOURCES += \
     core/config/appconfig.cpp \
     core/config/configmanager.cpp \
     core/spritecatalog.cpp \
+    core/ttsclient.cpp \
     core/voiceplayer.cpp \
     core/conversationlog.cpp \
     core/pomodorocontroller.cpp \
@@ -34,6 +35,7 @@ HEADERS += \
     core/config/appconfig.h \
     core/config/configmanager.h \
     core/spritecatalog.h \
+    core/ttsclient.h \
     core/voiceplayer.h \
     core/conversationlog.h \
     core/pomodorocontroller.h \

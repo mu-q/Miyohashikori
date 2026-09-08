@@ -7,6 +7,7 @@
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
 #include "core/spritecatalog.h"
+#include "core/ttsclient.h"
 #include "core/voiceplayer.h"
 #include "ui/characterspriteview.h"
 #include "ui/replybubble.h"
@@ -16,6 +17,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
+#include <QDebug>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -39,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     , configManager_(new ConfigManager(this))
     , ai_(nullptr)
     , voicePlayer_(new VoicePlayer(this))
+    , ttsClient_(new TtsClient(this))
     , conversationLog_(new ConversationLog(this))
     , chatLogWindow_(new ChatLogWindow(conversationLog_, this))
 {
@@ -81,6 +84,9 @@ MainWindow::MainWindow(QWidget *parent)
 
         setReplyStatus(QStringLiteral("正在等待冰织回复…"));
         setInputWaiting(true);
+        ttsClient_->cancel();
+        pendingTtsRequestId_ = 0;
+        voicePlayer_->stop();
         conversationLog_->addUser(text);
         ai_->submit(text);
         inputLine_->clear();
@@ -112,6 +118,26 @@ void MainWindow::persistWindowPosition() const
 
 void MainWindow::wireAiSession()
 {
+    connect(ttsClient_, &TtsClient::audioReady, this,
+            [this](quint64 requestId, const QString &filePath) {
+                if (requestId != pendingTtsRequestId_)
+                    return;
+                configManager_->load();
+                voicePlayer_->playFile(filePath, configManager_->config().volume);
+                pendingTtsRequestId_ = 0;
+            });
+    connect(ttsClient_, &TtsClient::synthesisFailed, this,
+            [this](quint64 requestId, const QString &reason) {
+                if (requestId != pendingTtsRequestId_)
+                    return;
+                qWarning().noquote() << QStringLiteral("GPT-SoVITS 合成失败，回退原作语音：%1")
+                                             .arg(reason);
+                configManager_->load();
+                voicePlayer_->playReply(pendingVoiceText_, pendingVoiceEmotion_,
+                                        configManager_->config());
+                pendingTtsRequestId_ = 0;
+            });
+
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
         lastAssistantText_ = text;
         conversationLog_->addHyori(text);
@@ -128,7 +154,24 @@ void MainWindow::wireAiSession()
     connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
     connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &emotion) {
         configManager_->load();
-        voicePlayer_->playReply(lastAssistantText_, emotion, configManager_->config());
+        const AppConfig config = configManager_->config();
+        pendingVoiceText_ = lastAssistantText_;
+        pendingVoiceEmotion_ = emotion;
+
+        if (!config.voiceEnabled) {
+            ttsClient_->cancel();
+            pendingTtsRequestId_ = 0;
+            voicePlayer_->stop();
+            return;
+        }
+
+        if (ttsClient_->isConfigured(config)) {
+            pendingTtsRequestId_ = ttsClient_->synthesize(lastAssistantText_, config);
+            return;
+        }
+
+        pendingTtsRequestId_ = 0;
+        voicePlayer_->playReply(lastAssistantText_, emotion, config);
     });
 }
 

@@ -4,6 +4,7 @@ debug/apppaths.o
 debug/appconfig.o
 debug/configmanager.o
 debug/spritecatalog.o
+debug/ttsclient.o
 debug/voiceplayer.o
 debug/conversationlog.o
 debug/pomodorocontroller.o
@@ -19,6 +20,7 @@ debug/qrc_hyori_assets.o
 debug/moc_mainwindow.o
 debug/moc_configmanager.o
 debug/moc_spritecatalog.o
+debug/moc_ttsclient.o
 debug/moc_voiceplayer.o
 debug/moc_conversationlog.o
 debug/moc_pomodorocontroller.o

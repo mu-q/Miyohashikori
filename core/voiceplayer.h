@@ -16,6 +16,7 @@ public:
     explicit VoicePlayer(QObject *parent = nullptr);
 
     void playReply(const QString &replyText, const QString &emotion, const AppConfig &config);
+    void playFile(const QString &filePath, double volume);
     void stop();
 
 private:

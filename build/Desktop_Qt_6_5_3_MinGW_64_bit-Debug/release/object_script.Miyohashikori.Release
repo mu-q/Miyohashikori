@@ -4,6 +4,7 @@ release/apppaths.o
 release/appconfig.o
 release/configmanager.o
 release/spritecatalog.o
+release/ttsclient.o
 release/voiceplayer.o
 release/conversationlog.o
 release/pomodorocontroller.o
@@ -19,6 +20,7 @@ release/qrc_hyori_assets.o
 release/moc_mainwindow.o
 release/moc_configmanager.o
 release/moc_spritecatalog.o
+release/moc_ttsclient.o
 release/moc_voiceplayer.o
 release/moc_conversationlog.o
 release/moc_pomodorocontroller.o

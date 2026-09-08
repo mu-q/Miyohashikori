@@ -10,6 +10,12 @@ struct AppConfig
     QString llmApiKey;
     QString llmModel;
     QString ttsEndpoint;
+    QString ttsReferenceAudioPath;
+    QString ttsReferenceText;
+    QString ttsReferenceLanguage = QStringLiteral("ja");
+    QString ttsTextLanguage = QStringLiteral("zh");
+    bool ttsEnabled = false;
+    double ttsSpeedFactor = 1.0;
     QPoint windowPos;
     bool voiceEnabled = true;
     double volume = 0.8;

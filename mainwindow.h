@@ -13,6 +13,7 @@ class QShowEvent;
 class QRect;
 class ReplyBubble;
 class SpriteCatalog;
+class TtsClient;
 class VoicePlayer;
 class FocusWindow;
 class ConversationLog;
@@ -60,10 +61,14 @@ private:
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
     VoicePlayer *voicePlayer_ = nullptr;
+    TtsClient *ttsClient_ = nullptr;
     ConversationLog *conversationLog_ = nullptr;
     ChatLogWindow *chatLogWindow_ = nullptr;
     FocusWindow *focusWindow_ = nullptr;
     QString lastAssistantText_;
+    QString pendingVoiceText_;
+    QString pendingVoiceEmotion_;
+    quint64 pendingTtsRequestId_ = 0;
 
     bool dragging_ = false;
     bool draggingStarted_ = false;

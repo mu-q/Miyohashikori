@@ -37,6 +37,11 @@ QString logsRoot()
     return QDir::cleanPath(appDataRoot() + QStringLiteral("/logs"));
 }
 
+QString ttsCacheRoot()
+{
+    return QDir::cleanPath(appDataRoot() + QStringLiteral("/cache/tts"));
+}
+
 QString assetsRoot()
 {
     QStringList candidates;

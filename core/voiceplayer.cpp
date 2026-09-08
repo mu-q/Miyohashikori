@@ -454,6 +454,17 @@ void VoicePlayer::stop()
     player_->stop();
 }
 
+void VoicePlayer::playFile(const QString &filePath, double volume)
+{
+    if (!QFileInfo::exists(filePath))
+        return;
+
+    setVolume(volume);
+    player_->stop();
+    player_->setSource(QUrl::fromLocalFile(filePath));
+    player_->play();
+}
+
 QString VoicePlayer::resolveVoiceRoot() const
 {
     QStringList candidates;

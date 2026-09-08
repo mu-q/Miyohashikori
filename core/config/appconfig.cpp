@@ -4,6 +4,7 @@
 
 namespace {
 constexpr double kDefaultVolume = 0.8;
+constexpr double kDefaultTtsSpeedFactor = 1.0;
 constexpr int kDefaultWorkMinutes = 25;
 constexpr int kDefaultShortBreakMinutes = 5;
 constexpr int kDefaultLongBreakMinutes = 15;
@@ -29,6 +30,10 @@ AppConfig AppConfig::defaults()
     AppConfig config;
     config.llmEndpoint = QStringLiteral("https://api.deepseek.com/chat/completions");
     config.llmModel = QStringLiteral("deepseek-chat");
+    config.ttsEndpoint = QStringLiteral("http://127.0.0.1:9880/tts");
+    config.ttsReferenceLanguage = QStringLiteral("ja");
+    config.ttsTextLanguage = QStringLiteral("zh");
+    config.ttsSpeedFactor = kDefaultTtsSpeedFactor;
     config.voiceEnabled = true;
     config.volume = kDefaultVolume;
     config.pomodoroWorkMinutes = kDefaultWorkMinutes;
@@ -53,7 +58,24 @@ AppConfig AppConfig::fromJson(const QJsonObject &obj)
     const QString model = obj.value(QStringLiteral("llmModel")).toString().trimmed();
     if (!model.isEmpty())
         config.llmModel = model;
-    config.ttsEndpoint = obj.value(QStringLiteral("ttsEndpoint")).toString();
+    const QString ttsEndpoint = obj.value(QStringLiteral("ttsEndpoint")).toString().trimmed();
+    if (!ttsEndpoint.isEmpty())
+        config.ttsEndpoint = ttsEndpoint;
+    config.ttsReferenceAudioPath =
+        obj.value(QStringLiteral("ttsReferenceAudioPath")).toString().trimmed();
+    config.ttsReferenceText =
+        obj.value(QStringLiteral("ttsReferenceText")).toString().trimmed();
+    const QString referenceLanguage =
+        obj.value(QStringLiteral("ttsReferenceLanguage")).toString().trimmed().toLower();
+    if (!referenceLanguage.isEmpty())
+        config.ttsReferenceLanguage = referenceLanguage;
+    const QString textLanguage =
+        obj.value(QStringLiteral("ttsTextLanguage")).toString().trimmed().toLower();
+    if (!textLanguage.isEmpty())
+        config.ttsTextLanguage = textLanguage;
+    config.ttsEnabled = obj.value(QStringLiteral("ttsEnabled")).toBool(config.ttsEnabled);
+    config.ttsSpeedFactor = qBound(
+        0.5, obj.value(QStringLiteral("ttsSpeedFactor")).toDouble(config.ttsSpeedFactor), 2.0);
     config.voiceEnabled = obj.value(QStringLiteral("voiceEnabled")).toBool(config.voiceEnabled);
     config.volume = qBound(0.0, obj.value(QStringLiteral("volume")).toDouble(config.volume), 1.0);
     config.backgroundVideoPath = obj.value(QStringLiteral("backgroundVideoPath")).toString().trimmed();
@@ -83,6 +105,12 @@ QJsonObject AppConfig::toJson() const
     obj.insert(QStringLiteral("llmApiKey"), llmApiKey);
     obj.insert(QStringLiteral("llmModel"), llmModel);
     obj.insert(QStringLiteral("ttsEndpoint"), ttsEndpoint);
+    obj.insert(QStringLiteral("ttsReferenceAudioPath"), ttsReferenceAudioPath);
+    obj.insert(QStringLiteral("ttsReferenceText"), ttsReferenceText);
+    obj.insert(QStringLiteral("ttsReferenceLanguage"), ttsReferenceLanguage);
+    obj.insert(QStringLiteral("ttsTextLanguage"), ttsTextLanguage);
+    obj.insert(QStringLiteral("ttsEnabled"), ttsEnabled);
+    obj.insert(QStringLiteral("ttsSpeedFactor"), qBound(0.5, ttsSpeedFactor, 2.0));
     obj.insert(QStringLiteral("voiceEnabled"), voiceEnabled);
     obj.insert(QStringLiteral("volume"), qBound(0.0, volume, 1.0));
     obj.insert(QStringLiteral("backgroundVideoPath"), backgroundVideoPath);
