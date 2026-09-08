@@ -348,10 +348,12 @@ QString OpenAiChatSession::buildSystemPrompt() const
         "以最后的明确陈述为准。被指出判断不合时宜时，先简短承认并修正，再回应用户真正的新信息；不要继续重复已经被纠正的关心。\n"
         "避免：不要写成活泼甜妹、万能心理咨询师或过度黏人的恋人；不要使用“宝贝”“乖”“抱抱你”“永远陪着你”等油腻套话；"
         "不要堆网络热词，不要自称 AI，不要跳出角色，不要写旁白、动作描写或小说段落。\n"
-        "输出格式必须严格分三部分：第一部分是显示给用户的自然中文，除非用户明确要求详细回答，否则限制为 1 到 2 句；"
-        "第二部分紧跟一份语义完全一致、适合直接朗读的自然日语译文，格式必须为 <tts-ja>日语译文</tts-ja>，"
-        "其中不要写中文、罗马音、标签或舞台说明；最后附加且只附加一个情绪标签 [emotion:xxx]。"
-        "xxx 只能是 happy、shy、neutral、concerned、excited 之一。不要向用户解释这些格式要求。");
+        "输出必须是一个合法 JSON 对象，不要使用 Markdown 代码块，也不要输出 JSON 之外的文字。"
+        "对象必须且只能包含三个字符串字段：display_zh、speech_ja、emotion。"
+        "display_zh 是显示给用户的自然中文，除非用户明确要求详细回答，否则限制为 1 到 2 句；"
+        "speech_ja 是与 display_zh 语义完全一致、适合直接朗读的自然日语，不要写中文、罗马音、标签或舞台说明；"
+        "emotion 只能是 happy、shy、neutral、concerned、excited 之一。"
+        "示例：{\"display_zh\":\"早上好。昨晚有好好睡吗？\",\"speech_ja\":\"おはようございます。昨夜はよく眠れましたか？\",\"emotion\":\"neutral\"}。");
 }
 
 QJsonArray OpenAiChatSession::buildFewShotMessages() const
@@ -409,6 +411,8 @@ void OpenAiChatSession::sendRequest(const PendingRequest &request)
     payload.insert(QStringLiteral("messages"),
                    history_.toOpenAiMessages(systemPrompt, buildFewShotMessages()));
     payload.insert(QStringLiteral("temperature"), 0.7);
+    payload.insert(QStringLiteral("response_format"),
+                   QJsonObject{{QStringLiteral("type"), QStringLiteral("json_object")}});
 
     QNetworkReply *reply =
         network_->post(networkRequest, QJsonDocument(payload).toJson(QJsonDocument::Compact));
@@ -467,8 +471,19 @@ void OpenAiChatSession::handleReply(QNetworkReply *reply, PendingRequest request
     }
 
     const EmotionParser::Result result = EmotionParser::parse(rawText);
+    if (result.text.trimmed().isEmpty() || result.speechText.trimmed().isEmpty()) {
+        reply->deleteLater();
+        retryRequest(request, QStringLiteral("回复缺少中文显示文本或日语朗读文本。"));
+        return;
+    }
+
     const QString displayText = result.text.isEmpty() ? rawText.trimmed() : result.text;
-    history_.addAssistantMessage(displayText);
+    QJsonObject historyReply;
+    historyReply.insert(QStringLiteral("display_zh"), displayText);
+    historyReply.insert(QStringLiteral("speech_ja"), result.speechText);
+    historyReply.insert(QStringLiteral("emotion"), result.emotion);
+    history_.addAssistantMessage(
+        QString::fromUtf8(QJsonDocument(historyReply).toJson(QJsonDocument::Compact)));
 
     emit assistantMessage(displayText);
     emit assistantSpeech(result.speechText);
