@@ -13,7 +13,7 @@ struct AppConfig
     QString ttsReferenceAudioPath;
     QString ttsReferenceText;
     QString ttsReferenceLanguage = QStringLiteral("ja");
-    QString ttsTextLanguage = QStringLiteral("zh");
+    QString ttsTextLanguage = QStringLiteral("ja");
     bool ttsEnabled = false;
     double ttsSpeedFactor = 1.0;
     QPoint windowPos;

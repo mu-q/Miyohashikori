@@ -66,6 +66,7 @@ private:
     ChatLogWindow *chatLogWindow_ = nullptr;
     FocusWindow *focusWindow_ = nullptr;
     QString lastAssistantText_;
+    QString lastAssistantSpeechText_;
     QString pendingVoiceText_;
     QString pendingVoiceEmotion_;
     quint64 pendingTtsRequestId_ = 0;

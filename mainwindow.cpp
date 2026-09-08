@@ -144,6 +144,9 @@ void MainWindow::wireAiSession()
         setReplyMessage(text);
         setInputWaiting(false);
     });
+    connect(ai_, &IAiSession::assistantSpeech, this, [this](const QString &text) {
+        lastAssistantSpeechText_ = text.trimmed();
+    });
     connect(ai_, &IAiSession::sessionStatus, this, [this](const QString &status) {
         setReplyStatus(status);
     });
@@ -165,8 +168,11 @@ void MainWindow::wireAiSession()
             return;
         }
 
-        if (ttsClient_->isConfigured(config)) {
-            pendingTtsRequestId_ = ttsClient_->synthesize(lastAssistantText_, config);
+        if (ttsClient_->isConfigured(config) && !lastAssistantSpeechText_.isEmpty()) {
+            AppConfig japaneseTtsConfig = config;
+            japaneseTtsConfig.ttsTextLanguage = QStringLiteral("ja");
+            pendingTtsRequestId_ =
+                ttsClient_->synthesize(lastAssistantSpeechText_, japaneseTtsConfig);
             return;
         }
 

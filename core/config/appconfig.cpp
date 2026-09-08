@@ -32,7 +32,7 @@ AppConfig AppConfig::defaults()
     config.llmModel = QStringLiteral("deepseek-chat");
     config.ttsEndpoint = QStringLiteral("http://127.0.0.1:9880/tts");
     config.ttsReferenceLanguage = QStringLiteral("ja");
-    config.ttsTextLanguage = QStringLiteral("zh");
+    config.ttsTextLanguage = QStringLiteral("ja");
     config.ttsSpeedFactor = kDefaultTtsSpeedFactor;
     config.voiceEnabled = true;
     config.volume = kDefaultVolume;

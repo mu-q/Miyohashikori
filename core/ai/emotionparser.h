@@ -8,6 +8,7 @@ public:
     struct Result
     {
         QString text;
+        QString speechText;
         QString emotion;
     };
 

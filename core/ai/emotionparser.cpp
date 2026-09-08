@@ -12,19 +12,27 @@ const QSet<QString> kSupportedEmotions = {QStringLiteral("happy"), QStringLitera
 
 EmotionParser::Result EmotionParser::parse(const QString &rawText)
 {
-    static const QRegularExpression regex(
+    static const QRegularExpression emotionRegex(
         QStringLiteral("\\[emotion:([A-Za-z]+)\\]"),
+        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression speechRegex(
+        QStringLiteral("<tts-ja>\\s*([\\s\\S]*?)\\s*</tts-ja>"),
         QRegularExpression::CaseInsensitiveOption);
 
     Result result;
     result.emotion = QStringLiteral("neutral");
 
-    QRegularExpressionMatchIterator it = regex.globalMatch(rawText);
+    const QRegularExpressionMatch speechMatch = speechRegex.match(rawText);
+    if (speechMatch.hasMatch())
+        result.speechText = speechMatch.captured(1).trimmed();
+
+    QRegularExpressionMatchIterator it = emotionRegex.globalMatch(rawText);
     QRegularExpressionMatch lastMatch;
     while (it.hasNext())
         lastMatch = it.next();
 
     QString text = rawText;
+    text.remove(speechRegex);
     if (lastMatch.hasMatch()) {
         const QString emotion = lastMatch.captured(1).toLower();
         if (kSupportedEmotions.contains(emotion))

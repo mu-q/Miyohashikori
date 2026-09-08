@@ -58,7 +58,7 @@ mingw32-make
   "ttsReferenceAudioPath": "D:/个人/GitHub/Miyohashikori/resources/voice/ko/ko0007.ogg",
   "ttsReferenceText": "そうですね。帰って温かいミルクティでも",
   "ttsReferenceLanguage": "ja",
-  "ttsTextLanguage": "zh",
+  "ttsTextLanguage": "ja",
   "ttsSpeedFactor": 1.0,
   "voiceEnabled": true,
   "volume": 0.8,
@@ -73,7 +73,7 @@ mingw32-make
 - `ttsEndpoint`：GPT-SoVITS v2 API 的 `/tts` 地址。
 - `ttsReferenceAudioPath`：参考音频的本机绝对路径。
 - `ttsReferenceText`：参考音频的准确台词，必须与音频内容一致。
-- `ttsReferenceLanguage`、`ttsTextLanguage`：参考音频与待合成文本的语言代码。
+- `ttsReferenceLanguage`、`ttsTextLanguage`：参考音频与待合成文本的语言代码；当前桌宠显示中文，但会把同一回复的隐藏日语译文交给 TTS。
 - `ttsSpeedFactor`：合成语速，推荐从 `1.0` 开始调整。
 - `voiceEnabled`：语音总开关；关闭后 TTS 和本地语音均不播放。
 - `volume`：音量，范围 `0.0` 到 `1.0`。

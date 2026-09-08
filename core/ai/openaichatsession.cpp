@@ -348,8 +348,10 @@ QString OpenAiChatSession::buildSystemPrompt() const
         "以最后的明确陈述为准。被指出判断不合时宜时，先简短承认并修正，再回应用户真正的新信息；不要继续重复已经被纠正的关心。\n"
         "避免：不要写成活泼甜妹、万能心理咨询师或过度黏人的恋人；不要使用“宝贝”“乖”“抱抱你”“永远陪着你”等油腻套话；"
         "不要堆网络热词，不要自称 AI，不要跳出角色，不要写旁白、动作描写或小说段落。\n"
-        "输出：除非用户明确要求详细回答，否则回复 1 到 4 句话。结尾必须附加且只附加一个情绪标签 [emotion:xxx]，"
-        "xxx 只能是 happy、shy、neutral、concerned、excited 之一。");
+        "输出格式必须严格分三部分：第一部分是显示给用户的自然中文，除非用户明确要求详细回答，否则限制为 1 到 2 句；"
+        "第二部分紧跟一份语义完全一致、适合直接朗读的自然日语译文，格式必须为 <tts-ja>日语译文</tts-ja>，"
+        "其中不要写中文、罗马音、标签或舞台说明；最后附加且只附加一个情绪标签 [emotion:xxx]。"
+        "xxx 只能是 happy、shy、neutral、concerned、excited 之一。不要向用户解释这些格式要求。");
 }
 
 QJsonArray OpenAiChatSession::buildFewShotMessages() const
@@ -465,9 +467,11 @@ void OpenAiChatSession::handleReply(QNetworkReply *reply, PendingRequest request
     }
 
     const EmotionParser::Result result = EmotionParser::parse(rawText);
-    history_.addAssistantMessage(rawText.trimmed());
+    const QString displayText = result.text.isEmpty() ? rawText.trimmed() : result.text;
+    history_.addAssistantMessage(displayText);
 
-    emit assistantMessage(result.text.isEmpty() ? rawText.trimmed() : result.text);
+    emit assistantMessage(displayText);
+    emit assistantSpeech(result.speechText);
     emit assistantEmotion(result.emotion);
 
     reply->deleteLater();

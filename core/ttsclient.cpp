@@ -73,7 +73,9 @@ quint64 TtsClient::synthesize(const QString &text, const AppConfig &config)
     payload.insert(QStringLiteral("top_p"), 1.0);
     payload.insert(QStringLiteral("temperature"), 1.0);
     payload.insert(QStringLiteral("text_split_method"), QStringLiteral("cut5"));
-    payload.insert(QStringLiteral("batch_size"), 1);
+    payload.insert(QStringLiteral("batch_size"), 4);
+    payload.insert(QStringLiteral("split_bucket"), true);
+    payload.insert(QStringLiteral("parallel_infer"), true);
     payload.insert(QStringLiteral("speed_factor"), config.ttsSpeedFactor);
     payload.insert(QStringLiteral("media_type"), QStringLiteral("wav"));
     payload.insert(QStringLiteral("streaming_mode"), false);
