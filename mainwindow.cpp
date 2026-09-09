@@ -6,6 +6,7 @@
 #include "core/apppaths.h"
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
+#include "core/data/databasemanager.h"
 #include "core/spritecatalog.h"
 #include "core/ttsclient.h"
 #include "core/voiceplayer.h"
@@ -39,6 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     , replyBubble_(new ReplyBubble(this))
     , inputLine_(new QLineEdit(this))
     , configManager_(new ConfigManager(this))
+    , databaseManager_(std::make_unique<DatabaseManager>())
     , ai_(nullptr)
     , voicePlayer_(new VoicePlayer(this))
     , ttsClient_(new TtsClient(this))
@@ -47,6 +49,10 @@ MainWindow::MainWindow(QWidget *parent)
 {
     applyWindowChrome();
     configManager_->load();
+    if (!databaseManager_->initialize()) {
+        qWarning().noquote() << QStringLiteral("扩展数据功能初始化失败：%1")
+                                    .arg(databaseManager_->errorString());
+    }
     ai_ = new OpenAiChatSession(configManager_, this);
 
     inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));

@@ -14,6 +14,8 @@
 - 可调用本机 GPT-SoVITS API 合成回复语音，并缓存已生成的音频
 - TTS 未配置或合成失败时，自动退回本地日语语音库
 - 自动创建、读取并保存本地配置；窗口位置会在下次启动时恢复
+- 专注模式、番茄钟、背景视频与本次运行的对话记录窗口
+- 基于 SQLite 的日记、笔记和工作待办数据底座（业务界面待后续接入）
 
 目前支持的情绪标签为：`happy`、`shy`、`neutral`、`concerned`、`excited`。非 neutral 表情会在约 20 秒后恢复为 neutral。
 
@@ -40,6 +42,15 @@
 ```powershell
 qmake Miyohashikori.pro
 mingw32-make
+```
+
+发布 Windows Release 构建时，可使用脚本收集 Qt 运行库并显式校验 SQLite 驱动：
+
+```powershell
+.\scripts\deploy_windows.ps1 `
+  -Executable .\path\to\release\Miyohashikori.exe `
+  -Destination .\dist `
+  -QtBin D:\path\to\Qt\6.5.3\mingw_64\bin
 ```
 
 构建产物通常位于构建目录下。运行程序时应保留项目的 `assets/` 与 `resources/voice/` 目录；开发运行时程序会自动向上查找这些资源。
@@ -119,6 +130,7 @@ AI 的回复要求在结尾带有 `[emotion:xxx]`；该标签不会显示在回�
 ├─ core/
 │  ├─ ai/                    # 对话会话、上下文、emotion 解析
 │  ├─ config/                # 本地 JSON 配置
+│  ├─ data/                  # SQLite 连接、迁移、数据模型与仓储
 │  ├─ spritecatalog.*        # 立绘模式与 emotion 映射
 │  ├─ ttsclient.*            # GPT-SoVITS 请求与合成音频缓存
 │  └─ voiceplayer.*          # 合成音频及本地语音播放
@@ -132,6 +144,6 @@ AI 的回复要求在结尾带有 `[emotion:xxx]`；该标签不会显示在回�
 
 ## 已知边界与后续方向
 
-当前版本仍是桌宠 MVP，暂未提供图形化设置页、独立输入/聊天记录窗口、系统托盘、单实例保护和日志系统。LLM 与本地 TTS 配置目前需要手动编辑 JSON 文件，GPT-SoVITS 服务也需要单独启动。
+当前版本仍是桌宠 MVP，暂未提供图形化设置页、日记/笔记/待办业务界面、系统托盘、单实例保护和日志系统。LLM 与本地 TTS 配置目前需要手动编辑 JSON 文件，GPT-SoVITS 服务也需要单独启动。业务数据保存在 `~/.hyori/hyori.db`，配置仍保存在 `~/.hyori/config.json`。
 
 更完整的需求与设计记录见 [requirements.md](.kiro/specs/hyori-desktop-pet/requirements.md) 和 [implementation.md](.kiro/specs/hyori-desktop-pet/implementation.md)。其中部分早期规划已经完成，README 以当前代码行为为准。

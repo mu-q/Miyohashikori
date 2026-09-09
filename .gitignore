@@ -1,3 +1,8 @@
 ﻿.vs/
 build/
 /.vs
+tests/.qmake.stash
+tests/Makefile*
+tests/debug/
+tests/release/
+tests/target_wrapper.sh

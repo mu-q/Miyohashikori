@@ -1,4 +1,4 @@
-QT       += core gui network multimedia multimediawidgets
+QT       += core gui network multimedia multimediawidgets sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -16,6 +16,10 @@ SOURCES += \
     core/ttsclient.cpp \
     core/voiceplayer.cpp \
     core/conversationlog.cpp \
+    core/data/databasemanager.cpp \
+    core/data/journalrepository.cpp \
+    core/data/noterepository.cpp \
+    core/data/todorepository.cpp \
     core/pomodorocontroller.cpp \
     core/ai/chathistory.cpp \
     core/ai/emotionparser.cpp \
@@ -38,6 +42,13 @@ HEADERS += \
     core/ttsclient.h \
     core/voiceplayer.h \
     core/conversationlog.h \
+    core/data/databasemanager.h \
+    core/data/dataresult.h \
+    core/data/models.h \
+    core/data/sqlhelpers.h \
+    core/data/journalrepository.h \
+    core/data/noterepository.h \
+    core/data/todorepository.h \
     core/pomodorocontroller.h \
     core/ai/chathistory.h \
     core/ai/emotionparser.h \

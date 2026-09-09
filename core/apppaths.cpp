@@ -32,6 +32,11 @@ QString configFilePath()
     return QDir::cleanPath(appDataRoot() + QStringLiteral("/config.json"));
 }
 
+QString databaseFilePath()
+{
+    return QDir::cleanPath(appDataRoot() + QStringLiteral("/hyori.db"));
+}
+
 QString logsRoot()
 {
     return QDir::cleanPath(appDataRoot() + QStringLiteral("/logs"));

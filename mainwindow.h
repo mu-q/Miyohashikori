@@ -4,6 +4,8 @@
 #include <QPoint>
 #include <QWidget>
 
+#include <memory>
+
 class CharacterSpriteView;
 class ConfigManager;
 class IAiSession;
@@ -18,6 +20,7 @@ class VoicePlayer;
 class FocusWindow;
 class ConversationLog;
 class ChatLogWindow;
+class DatabaseManager;
 
 class MainWindow : public QWidget
 {
@@ -59,6 +62,7 @@ private:
     ReplyBubble *replyBubble_ = nullptr;
     QLineEdit *inputLine_ = nullptr;
     ConfigManager *configManager_ = nullptr;
+    std::unique_ptr<DatabaseManager> databaseManager_;
     IAiSession *ai_ = nullptr;
     VoicePlayer *voicePlayer_ = nullptr;
     TtsClient *ttsClient_ = nullptr;
