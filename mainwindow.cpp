@@ -7,6 +7,8 @@
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
 #include "core/data/databasemanager.h"
+#include "core/data/schedulerepository.h"
+#include "core/schedule/courseremindercontroller.h"
 #include "core/spritecatalog.h"
 #include "core/ttsclient.h"
 #include "core/voiceplayer.h"
@@ -53,7 +55,9 @@ MainWindow::MainWindow(QWidget *parent)
         qWarning().noquote() << QStringLiteral("扩展数据功能初始化失败：%1")
                                     .arg(databaseManager_->errorString());
     }
+    scheduleRepository_ = std::make_unique<ScheduleRepository>(databaseManager_.get());
     ai_ = new OpenAiChatSession(configManager_, this);
+    courseReminder_ = new CourseReminderController(scheduleRepository_.get(), this);
 
     inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));
     inputLine_->setClearButtonEnabled(true);
@@ -99,6 +103,11 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     wireAiSession();
+    connect(courseReminder_, &CourseReminderController::reminderDue,
+            this, &MainWindow::handleCourseReminder);
+    connect(courseReminder_, &CourseReminderController::reminderError, this,
+            [](const QString &error) { qWarning().noquote() << QStringLiteral("课程提醒：%1").arg(error); });
+    courseReminder_->start();
     refreshConfigHint();
     QTimer::singleShot(0, this, [this] { applyWindowPlacement(); });
 }
@@ -419,10 +428,38 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
 void MainWindow::openFocusWindow()
 {
     if (!focusWindow_)
-        focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_, this);
+        focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_,
+                                       scheduleRepository_.get(), this);
     focusWindow_->show();
     focusWindow_->raise();
     focusWindow_->activateWindow();
+}
+
+void MainWindow::handleCourseReminder(const CourseOccurrence &, int,
+                                      const QString &displayText, const QString &speechText)
+{
+    conversationLog_->addHyori(displayText);
+    setReplyMessage(displayText);
+    catalog_->setEmotion(QStringLiteral("concerned"));
+    if (focusWindow_)
+        focusWindow_->showCourseReminder(displayText);
+
+    configManager_->load();
+    const AppConfig config = configManager_->config();
+    if (!config.voiceEnabled)
+        return;
+    ttsClient_->cancel();
+    voicePlayer_->stop();
+    pendingVoiceText_ = displayText;
+    pendingVoiceEmotion_ = QStringLiteral("concerned");
+    if (ttsClient_->isConfigured(config)) {
+        AppConfig japaneseTtsConfig = config;
+        japaneseTtsConfig.ttsTextLanguage = QStringLiteral("ja");
+        pendingTtsRequestId_ = ttsClient_->synthesize(speechText, japaneseTtsConfig);
+    } else {
+        pendingTtsRequestId_ = 0;
+        voicePlayer_->playReply(displayText, pendingVoiceEmotion_, config);
+    }
 }
 
 void MainWindow::showChatHistory()

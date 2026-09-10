@@ -15,6 +15,7 @@
 - TTS 未配置或合成失败时，自动退回本地日语语音库
 - 自动创建、读取并保存本地配置；窗口位置会在下次启动时恢复
 - 专注模式、番茄钟、背景视频与本次运行的对话记录窗口
+- 专注页课程表侧边栏：多学期、手动课程、WakeUp 备份导入，以及课前 30/20 分钟语音提醒
 - 基于 SQLite 的日记、笔记和工作待办数据底座（业务界面待后续接入）
 
 目前支持的情绪标签为：`happy`、`shy`、`neutral`、`concerned`、`excited`。非 neutral 表情会在约 20 秒后恢复为 neutral。
@@ -22,7 +23,7 @@
 ## 环境要求
 
 - Windows
-- Qt 6（开发时使用 Qt 6.5.3，需包含 Widgets、Network、Multimedia 模块）
+- Qt 6（开发时使用 Qt 6.5.3，需包含 Widgets、Network、Multimedia、SQL 模块及 QSQLITE 驱动）
 - 支持 C++17 的编译器，例如 MinGW 64-bit
 - 一个 OpenAI Chat Completions 兼容接口的 API Key
 - 可选：已安装并训练好模型的 GPT-SoVITS v2Pro 整合包
@@ -119,6 +120,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_hyori_tts.ps1
 - 右键点击立绘可切换立绘模式或退出程序。
 - 按住 Alt 后左键拖动立绘可移动窗口。
 - 按住 Alt 后滚动鼠标滚轮可缩放立绘。
+- 在专注模式右侧的“学期”菜单中新建学期，然后用“＋课程”手动填写；双击课程可编辑。
+- WakeUp 中通过分享功能导出“备份（可导入）”文件，再点击侧边栏底部“导入 WakeUp 备份”。导入会新建并启用一个学期，不覆盖已有课表。
+- 桌宠运行期间，当前学期的课程会在课前 30 分钟和 20 分钟各提醒一次；语音总开关关闭时只显示文字。
 
 AI 的回复要求在结尾带有 `[emotion:xxx]`；该标签不会显示在回复气泡中，而是用于驱动表情和语音选择。
 
@@ -131,10 +135,11 @@ AI 的回复要求在结尾带有 `[emotion:xxx]`；该标签不会显示在回�
 │  ├─ ai/                    # 对话会话、上下文、emotion 解析
 │  ├─ config/                # 本地 JSON 配置
 │  ├─ data/                  # SQLite 连接、迁移、数据模型与仓储
+│  ├─ schedule/              # WakeUp 导入与课程提醒调度
 │  ├─ spritecatalog.*        # 立绘模式与 emotion 映射
 │  ├─ ttsclient.*            # GPT-SoVITS 请求与合成音频缓存
 │  └─ voiceplayer.*          # 合成音频及本地语音播放
-├─ ui/                       # 立绘视图与回复气泡
+├─ ui/                       # 立绘、回复气泡、专注页与课程表侧边栏
 ├─ assets/modes/default/     # 按 emotion 命名的默认立绘
 ├─ resources/txt/            # few-shot 与语音索引资源
 └─ resources/voice/          # 本地日语语音资源

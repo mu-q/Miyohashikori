@@ -21,6 +21,9 @@ class FocusWindow;
 class ConversationLog;
 class ChatLogWindow;
 class DatabaseManager;
+class ScheduleRepository;
+class CourseReminderController;
+struct CourseOccurrence;
 
 class MainWindow : public QWidget
 {
@@ -52,6 +55,8 @@ private:
     void chooseBackgroundVideo();
     void clearBackgroundVideo();
     void showChatHistory();
+    void handleCourseReminder(const CourseOccurrence &occurrence, int leadMinutes,
+                              const QString &displayText, const QString &speechText);
 
     void startDrag(const QPoint &globalPress);
     void updateDrag(const QPoint &globalPos);
@@ -63,6 +68,8 @@ private:
     QLineEdit *inputLine_ = nullptr;
     ConfigManager *configManager_ = nullptr;
     std::unique_ptr<DatabaseManager> databaseManager_;
+    std::unique_ptr<ScheduleRepository> scheduleRepository_;
+    CourseReminderController *courseReminder_ = nullptr;
     IAiSession *ai_ = nullptr;
     VoicePlayer *voicePlayer_ = nullptr;
     TtsClient *ttsClient_ = nullptr;

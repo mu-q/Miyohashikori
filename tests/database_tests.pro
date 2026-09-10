@@ -15,6 +15,9 @@ SOURCES += \
     ../core/data/databasemanager.cpp \
     ../core/data/journalrepository.cpp \
     ../core/data/noterepository.cpp \
+    ../core/data/schedulerepository.cpp \
+    ../core/schedule/courseremindercontroller.cpp \
+    ../core/schedule/wakeupscheduleimporter.cpp \
     ../core/data/todorepository.cpp
 
 HEADERS += \
@@ -25,4 +28,7 @@ HEADERS += \
     ../core/data/sqlhelpers.h \
     ../core/data/journalrepository.h \
     ../core/data/noterepository.h \
+    ../core/data/schedulerepository.h \
+    ../core/schedule/courseremindercontroller.h \
+    ../core/schedule/wakeupscheduleimporter.h \
     ../core/data/todorepository.h

@@ -19,7 +19,10 @@ SOURCES += \
     core/data/databasemanager.cpp \
     core/data/journalrepository.cpp \
     core/data/noterepository.cpp \
+    core/data/schedulerepository.cpp \
     core/data/todorepository.cpp \
+    core/schedule/courseremindercontroller.cpp \
+    core/schedule/wakeupscheduleimporter.cpp \
     core/pomodorocontroller.cpp \
     core/ai/chathistory.cpp \
     core/ai/emotionparser.cpp \
@@ -28,6 +31,7 @@ SOURCES += \
     ui/characterspriteview.cpp \
     ui/replybubble.cpp \
     ui/chatlogwindow.cpp \
+    ui/coursesidebar.cpp \
     ui/focuswindow.cpp
 
 RESOURCES += \
@@ -48,7 +52,10 @@ HEADERS += \
     core/data/sqlhelpers.h \
     core/data/journalrepository.h \
     core/data/noterepository.h \
+    core/data/schedulerepository.h \
     core/data/todorepository.h \
+    core/schedule/courseremindercontroller.h \
+    core/schedule/wakeupscheduleimporter.h \
     core/pomodorocontroller.h \
     core/ai/chathistory.h \
     core/ai/emotionparser.h \
@@ -58,6 +65,7 @@ HEADERS += \
     ui/characterspriteview.h \
     ui/replybubble.h \
     ui/chatlogwindow.h \
+    ui/coursesidebar.h \
     ui/focuswindow.h
 
 # Default rules for deployment.

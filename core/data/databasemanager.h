@@ -22,12 +22,13 @@ public:
     QString connectionName() const;
     QSqlDatabase database() const;
 
-    static constexpr int latestSchemaVersion() { return 1; }
+    static constexpr int latestSchemaVersion() { return 2; }
 
 private:
     bool configureConnection(QSqlDatabase &database);
     bool migrate(QSqlDatabase &database);
     bool migrateToVersion1(QSqlDatabase &database);
+    bool migrateToVersion2(QSqlDatabase &database);
     bool execute(QSqlDatabase &database, const QString &statement);
     bool fail(const QString &message);
 

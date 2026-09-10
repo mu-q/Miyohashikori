@@ -158,9 +158,11 @@ bool DatabaseManager::migrate(QSqlDatabase &database)
     bool success = true;
     if (version < 1)
         success = migrateToVersion1(database);
+    if (success && version < 2)
+        success = migrateToVersion2(database);
 
     if (success)
-        success = execute(database, QStringLiteral("PRAGMA user_version = 1"));
+        success = execute(database, QStringLiteral("PRAGMA user_version = 2"));
 
     if (!success) {
         database.rollback();
@@ -171,6 +173,48 @@ bool DatabaseManager::migrate(QSqlDatabase &database)
                                     .arg(database.lastError().text());
         database.rollback();
         return fail(message);
+    }
+    return true;
+}
+
+bool DatabaseManager::migrateToVersion2(QSqlDatabase &database)
+{
+    const QStringList statements = {
+        QStringLiteral("CREATE TABLE IF NOT EXISTS semesters ("
+                       "id INTEGER PRIMARY KEY, name TEXT NOT NULL, start_date TEXT NOT NULL, "
+                       "total_weeks INTEGER NOT NULL CHECK(total_weeks BETWEEN 1 AND 40), "
+                       "is_active INTEGER NOT NULL DEFAULT 0 CHECK(is_active IN (0, 1)), "
+                       "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"),
+        QStringLiteral("CREATE UNIQUE INDEX IF NOT EXISTS idx_semesters_single_active "
+                       "ON semesters(is_active) WHERE is_active = 1"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_semesters_start_date "
+                       "ON semesters(start_date DESC)"),
+        QStringLiteral("CREATE TABLE IF NOT EXISTS courses ("
+                       "id INTEGER PRIMARY KEY, semester_id INTEGER NOT NULL, name TEXT NOT NULL, "
+                       "teacher TEXT NOT NULL DEFAULT '', room TEXT NOT NULL DEFAULT '', "
+                       "weekday INTEGER NOT NULL CHECK(weekday BETWEEN 1 AND 7), "
+                       "start_time TEXT NOT NULL, end_time TEXT NOT NULL, "
+                       "start_week INTEGER NOT NULL CHECK(start_week BETWEEN 1 AND 40), "
+                       "end_week INTEGER NOT NULL CHECK(end_week BETWEEN start_week AND 40), "
+                       "week_pattern INTEGER NOT NULL DEFAULT 0 CHECK(week_pattern IN (0, 1, 2)), "
+                       "created_at TEXT NOT NULL, updated_at TEXT NOT NULL, "
+                       "FOREIGN KEY(semester_id) REFERENCES semesters(id) ON DELETE CASCADE)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_courses_semester_day_time "
+                       "ON courses(semester_id, weekday, start_time)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_courses_week_range "
+                       "ON courses(semester_id, start_week, end_week)"),
+        QStringLiteral("CREATE TABLE IF NOT EXISTS course_reminders ("
+                       "id INTEGER PRIMARY KEY, course_id INTEGER NOT NULL, "
+                       "occurrence_date TEXT NOT NULL, lead_minutes INTEGER NOT NULL "
+                       "CHECK(lead_minutes IN (20, 30)), reminded_at TEXT NOT NULL, "
+                       "UNIQUE(course_id, occurrence_date, lead_minutes), "
+                       "FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_course_reminders_date "
+                       "ON course_reminders(occurrence_date)")
+    };
+    for (const QString &statement : statements) {
+        if (!execute(database, statement))
+            return false;
     }
     return true;
 }

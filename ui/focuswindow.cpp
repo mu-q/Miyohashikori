@@ -5,6 +5,7 @@
 #include "../core/config/appconfig.h"
 #include "../core/config/configmanager.h"
 #include "../core/pomodorocontroller.h"
+#include "../core/data/schedulerepository.h"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -25,17 +26,23 @@
 #include <QVBoxLayout>
 #include <QVideoWidget>
 #include "chatlogwindow.h"
+#include "coursesidebar.h"
 
 namespace {
 QString focusStyle()
 {
     return QStringLiteral(R"(
         QWidget#FocusWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #30343b, stop:0.52 #20242b, stop:1 #171a20); }
+        QDialog, QMessageBox { background: #20242b; }
         QLabel { color: #edf0f1; }
         QLabel#eyebrow { color: #c5b9a8; font-size: 12px; font-weight: 600; letter-spacing: 2px; }
         QLabel#timer { color: #f6f1e9; font-size: 68px; font-weight: 300; letter-spacing: 3px; }
         QLabel#cycles { color: #aeb3b7; font-size: 12px; }
         QFrame#glass, QFrame#dialogue, QFrame#durations { background: rgba(17, 20, 25, 190); border: 1px solid rgba(222, 209, 188, 70); border-radius: 10px; }
+        QWidget#courseSidebar { background: rgba(13, 16, 21, 220); border: 1px solid rgba(222, 209, 188, 70); border-radius: 12px; }
+        QLabel#sidebarTitle { color: #f6f1e9; font-size: 20px; font-weight: 500; }
+        QLabel#scheduleMeta { color: #aeb3b7; font-size: 12px; }
+        QLabel#nextCourse { background: rgba(85, 105, 119, 105); color: #f5f1eb; border-left: 3px solid #dfc8a7; border-radius: 6px; padding: 11px; font-size: 13px; }
         QLabel#speaker { color: #dfc8a7; font-weight: 600; font-size: 13px; }
         QLabel#dialogueText { color: #f1f2f3; font-size: 15px; }
         QLineEdit { background: rgba(11, 13, 17, 218); color: #f1f2f3; border: 1px solid rgba(222, 209, 188, 110); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
@@ -44,12 +51,20 @@ QString focusStyle()
         QPushButton:hover, QToolButton:hover { background: rgba(84, 78, 72, 230); border-color: #dfc8a7; }
         QPushButton:pressed, QToolButton:pressed { background: rgba(15, 17, 21, 240); }
         QSpinBox { background: rgba(10, 12, 16, 210); color: #f2eee8; border: 1px solid rgba(222, 209, 188, 90); border-radius: 5px; padding: 5px; min-width: 42px; }
+        QComboBox, QDateEdit, QTimeEdit { background: rgba(10, 12, 16, 210); color: #f2eee8; border: 1px solid rgba(222, 209, 188, 90); border-radius: 6px; padding: 6px 8px; }
+        QComboBox QAbstractItemView { background: #20242b; color: #f2eee8; selection-background-color: #59534d; }
+        QListWidget#courseList { background: transparent; color: #eef0f1; border: none; outline: none; }
+        QListWidget#courseList::item { background: rgba(40, 46, 55, 190); border: 1px solid rgba(222, 209, 188, 45); border-radius: 7px; padding: 7px 9px; margin: 2px 0; }
+        QListWidget#courseList::item:selected { background: rgba(90, 83, 75, 220); border-color: #dfc8a7; }
+        QPushButton#importWakeUp { color: #dfc8a7; }
+        QPushButton#smallCourseAction { min-width: 38px; padding: 7px 8px; }
     )");
 }
 }
 
 FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, ConversationLog *conversationLog,
-                         ChatLogWindow *chatLogWindow, QWidget *parent)
+                         ChatLogWindow *chatLogWindow, ScheduleRepository *scheduleRepository,
+                         QWidget *parent)
     : QWidget(parent), configManager_(configManager), ai_(ai), conversationLog_(conversationLog), chatLogWindow_(chatLogWindow), pomodoro_(new PomodoroController(configManager, this)),
       videoPlayer_(new QMediaPlayer(this)), videoWidget_(new QVideoWidget(this)), background_(new QWidget(this)),
       trayIcon_(new QSystemTrayIcon(style()->standardIcon(QStyle::SP_ComputerIcon), this))
@@ -57,8 +72,8 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     setObjectName(QStringLiteral("FocusWindow"));
     setWindowFlag(Qt::Window, true);
     setWindowTitle(QStringLiteral("冰织 · 专注时间"));
-    resize(900, 660);
-    setMinimumSize(640, 520);
+    resize(1120, 700);
+    setMinimumSize(820, 560);
     setStyleSheet(focusStyle());
 
     videoWidget_->setParent(background_);
@@ -109,23 +124,31 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     auto *saveDurations = new QPushButton(QStringLiteral("保存时长")); durations->addWidget(saveDurations);
     durationPanel_->hide(); root->addWidget(durationPanel_);
 
-    root->addStretch(3);
+    auto *content = new QHBoxLayout;
+    content->setSpacing(16);
+    auto *mainColumn = new QVBoxLayout;
+    mainColumn->setSpacing(12);
+    mainColumn->addStretch(3);
     auto *clock = new QFrame; clock->setObjectName(QStringLiteral("glass"));
     auto *clockLayout = new QVBoxLayout(clock); clockLayout->setContentsMargins(44, 27, 44, 24); clockLayout->setSpacing(2);
     phaseLabel_ = new QLabel; phaseLabel_->setObjectName(QStringLiteral("eyebrow")); phaseLabel_->setAlignment(Qt::AlignCenter);
     timerLabel_ = new QLabel; timerLabel_->setObjectName(QStringLiteral("timer")); timerLabel_->setAlignment(Qt::AlignCenter);
     clockLayout->addWidget(phaseLabel_); clockLayout->addWidget(timerLabel_);
-    root->addWidget(clock, 0, Qt::AlignHCenter);
+    mainColumn->addWidget(clock, 0, Qt::AlignHCenter);
     auto *controls = new QHBoxLayout; controls->setSpacing(10);
-    controls->addStretch(); playButton_ = new QToolButton; auto *skip = new QToolButton; skip->setText(QStringLiteral("跳过")); controls->addWidget(playButton_); controls->addWidget(skip); controls->addStretch(); root->addLayout(controls);
-    root->addStretch(2);
+    controls->addStretch(); playButton_ = new QToolButton; auto *skip = new QToolButton; skip->setText(QStringLiteral("跳过")); controls->addWidget(playButton_); controls->addWidget(skip); controls->addStretch(); mainColumn->addLayout(controls);
+    mainColumn->addStretch(2);
 
     auto *dialogue = new QFrame; dialogue->setObjectName(QStringLiteral("dialogue"));
     auto *dialogueLayout = new QVBoxLayout(dialogue); dialogueLayout->setContentsMargins(18, 11, 18, 13); dialogueLayout->setSpacing(5);
     auto *speaker = new QLabel(QStringLiteral("冰织")); speaker->setObjectName(QStringLiteral("speaker"));
     dialogueText_ = new QLabel(QStringLiteral("准备好了就开始吧。我会在这里陪着你。")); dialogueText_->setObjectName(QStringLiteral("dialogueText")); dialogueText_->setWordWrap(true);
-    dialogueLayout->addWidget(speaker); dialogueLayout->addWidget(dialogueText_); root->addWidget(dialogue);
-    input_ = new QLineEdit; input_->setPlaceholderText(QStringLiteral("和冰织说点什么…（回车发送）")); input_->setClearButtonEnabled(true); root->addWidget(input_);
+    dialogueLayout->addWidget(speaker); dialogueLayout->addWidget(dialogueText_); mainColumn->addWidget(dialogue);
+    input_ = new QLineEdit; input_->setPlaceholderText(QStringLiteral("和冰织说点什么…（回车发送）")); input_->setClearButtonEnabled(true); mainColumn->addWidget(input_);
+    content->addLayout(mainColumn, 1);
+    courseSidebar_ = new CourseSidebar(scheduleRepository, overlay);
+    content->addWidget(courseSidebar_);
+    root->addLayout(content, 1);
 
     connect(settings, &QToolButton::clicked, this, &FocusWindow::toggleDurationEditor);
     connect(history, &QToolButton::clicked, this, [this] { if (chatLogWindow_) { chatLogWindow_->show(); chatLogWindow_->raise(); chatLogWindow_->activateWindow(); } });
@@ -133,6 +156,7 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     connect(playButton_, &QToolButton::clicked, this, [this] { pomodoro_->isRunning() ? pomodoro_->pause() : pomodoro_->start(); });
     connect(skip, &QToolButton::clicked, pomodoro_, &PomodoroController::skip);
     connect(input_, &QLineEdit::returnPressed, this, &FocusWindow::sendChat);
+    connect(courseSidebar_, &CourseSidebar::statusMessage, this, &FocusWindow::setDialogue);
     connect(pomodoro_, &PomodoroController::tick, this, &FocusWindow::updateTimer);
     connect(pomodoro_, &PomodoroController::phaseChanged, this, [this](PomodoroController::Phase, const QString &name) { updatePhase(name); });
     connect(pomodoro_, &PomodoroController::runningChanged, this, &FocusWindow::updateRunning);
@@ -150,6 +174,14 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
         connect(ai_, &IAiSession::sessionError, this, [this](const QString &text) { setDialogue(text, true); input_->setEnabled(true); });
     }
     updatePhase(pomodoro_->phaseName()); updateTimer(pomodoro_->remainingSeconds()); updateRunning(false); reloadBackground();
+}
+
+void FocusWindow::showCourseReminder(const QString &text)
+{
+    setDialogue(text);
+    showNotification(QStringLiteral("冰织的课程提醒"), text);
+    if (courseSidebar_)
+        courseSidebar_->refresh();
 }
 
 void FocusWindow::reloadBackground()

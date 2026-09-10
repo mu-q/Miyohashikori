@@ -1,7 +1,10 @@
 #include "core/data/databasemanager.h"
 #include "core/data/journalrepository.h"
 #include "core/data/noterepository.h"
+#include "core/data/schedulerepository.h"
 #include "core/data/todorepository.h"
+#include "core/schedule/courseremindercontroller.h"
+#include "core/schedule/wakeupscheduleimporter.h"
 
 #include <QFile>
 #include <QSqlError>
@@ -87,6 +90,8 @@ private slots:
     void journalCrudAndDailyUniqueness();
     void noteCrudSearchTagsAndCascade();
     void todoCrudFiltersAndCompletionTime();
+    void scheduleCrudImportAndReminderDedupe();
+    void wakeUpBackupParsing();
 };
 
 void DatabaseTests::initTestCase()
@@ -316,6 +321,78 @@ void DatabaseTests::todoCrudFiltersAndCompletionTime()
     const auto removed = repository.remove(created.value.id);
     QVERIFY(removed.success && removed.value);
     QVERIFY(repository.remove(noDeadline.value.id).success);
+}
+
+void DatabaseTests::scheduleCrudImportAndReminderDedupe()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    DatabaseManager manager(temporaryDatabasePath(directory));
+    QVERIFY2(manager.initialize(), qPrintable(manager.errorString()));
+    ScheduleRepository repository(&manager);
+
+    const QDate monday(2026, 9, 7);
+    auto first = repository.createSemester(QStringLiteral("秋季学期"), monday, 18, true);
+    QVERIFY2(first.success, qPrintable(first.error));
+    Course course;
+    course.semesterId = first.value.id;
+    course.name = QStringLiteral("数据库原理");
+    course.teacher = QStringLiteral("林老师");
+    course.room = QStringLiteral("A-204");
+    course.weekday = 1;
+    course.startTime = QTime(8, 0);
+    course.endTime = QTime(9, 40);
+    course.startWeek = 1;
+    course.endWeek = 16;
+    auto created = repository.createCourse(course);
+    QVERIFY2(created.success, qPrintable(created.error));
+    QCOMPARE(repository.listCourses(first.value.id).value.size(), 1);
+    QCOMPARE(CourseReminderController::weekForDate(first.value, monday.addDays(14)), 3);
+    QVERIFY(CourseReminderController::occursInWeek(created.value, 3));
+
+    CourseReminderController controller(&repository);
+    QVector<int> leads;
+    connect(&controller, &CourseReminderController::reminderDue, this,
+            [&leads](const CourseOccurrence &, int lead, const QString &, const QString &) {
+                leads.append(lead);
+            });
+    controller.checkAt(QDateTime(monday.addDays(7), QTime(7, 30, 30)));
+    controller.checkAt(QDateTime(monday.addDays(7), QTime(7, 30, 40)));
+    controller.checkAt(QDateTime(monday.addDays(7), QTime(7, 40, 30)));
+    QCOMPARE(leads, QVector<int>({30, 20}));
+
+    auto marked = repository.markReminderSent(created.value.id, monday, 30);
+    QVERIFY(marked.success && marked.value);
+    marked = repository.markReminderSent(created.value.id, monday, 30);
+    QVERIFY(marked.success && !marked.value);
+
+    auto second = repository.createSemester(QStringLiteral("春季学期"), monday.addMonths(6), 20, true);
+    QVERIFY(second.success);
+    QVERIFY(repository.activeSemester().value.has_value());
+    QCOMPARE(repository.activeSemester().value->id, second.value.id);
+    QVERIFY(repository.removeSemester(first.value.id).value);
+    QCOMPARE(scalar(manager.databasePath(), QStringLiteral("SELECT count(*) FROM courses")).toInt(), 0);
+    QCOMPARE(scalar(manager.databasePath(), QStringLiteral("SELECT count(*) FROM course_reminders")).toInt(), 0);
+}
+
+void DatabaseTests::wakeUpBackupParsing()
+{
+    const QByteArray backup =
+        R"({"courseLen":45,"id":1,"name":"默认","sameBreakLen":true,"sameLen":true,"theBreakLen":10})" "\n"
+        R"([{"endTime":"08:45","node":1,"startTime":"08:00","timeTable":1},{"endTime":"09:40","node":2,"startTime":"08:55","timeTable":1}])" "\n"
+        R"({"id":1,"maxWeek":18,"nodes":2,"showOtherWeekCourse":false,"showSat":true,"showSun":true,"sundayFirst":false,"startDate":"2026-09-07","tableName":"2026 秋季","timeTable":1})" "\n"
+        R"([{"courseName":"高等数学","credit":4,"id":7,"note":"","tableId":1}])" "\n"
+        R"([{"day":2,"endWeek":16,"id":7,"level":0,"ownTime":false,"room":"B201","startNode":1,"startWeek":1,"step":2,"tableId":1,"teacher":"王老师","type":1}])";
+    const auto result = WakeUpScheduleImporter::parse(backup);
+    QVERIFY2(result.success, qPrintable(result.error));
+    QCOMPARE(result.value.name, QStringLiteral("2026 秋季"));
+    QCOMPARE(result.value.startDate, QDate(2026, 9, 7));
+    QCOMPARE(result.value.courses.size(), 1);
+    QCOMPARE(result.value.courses.first().name, QStringLiteral("高等数学"));
+    QCOMPARE(result.value.courses.first().startTime, QTime(8, 0));
+    QCOMPARE(result.value.courses.first().endTime, QTime(9, 40));
+    QCOMPARE(result.value.courses.first().weekPattern, CourseWeekPattern::OddWeeks);
+    QVERIFY(!WakeUpScheduleImporter::parse(QByteArrayLiteral("{}\n[]")).success);
 }
 
 QTEST_GUILESS_MAIN(DatabaseTests)

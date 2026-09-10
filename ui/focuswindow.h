@@ -6,6 +6,8 @@ class ConfigManager;
 class IAiSession;
 class ConversationLog;
 class ChatLogWindow;
+class CourseSidebar;
+class ScheduleRepository;
 class PomodoroController;
 class QFrame;
 class QLabel;
@@ -21,8 +23,10 @@ class FocusWindow : public QWidget
     Q_OBJECT
 public:
     explicit FocusWindow(ConfigManager *configManager, IAiSession *ai, ConversationLog *conversationLog,
-                         ChatLogWindow *chatLogWindow, QWidget *parent = nullptr);
+                         ChatLogWindow *chatLogWindow, ScheduleRepository *scheduleRepository,
+                         QWidget *parent = nullptr);
     void reloadBackground();
+    void showCourseReminder(const QString &text);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -58,4 +62,5 @@ private:
     QSpinBox *shortSpin_ = nullptr;
     QSpinBox *longSpin_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
+    CourseSidebar *courseSidebar_ = nullptr;
 };
