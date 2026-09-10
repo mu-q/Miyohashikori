@@ -6,3 +6,54 @@ tests/Makefile*
 tests/debug/
 tests/release/
 tests/target_wrapper.sh
+
+# IDE / editor-local files
+/.vscode/
+/.qtcreator/
+*.pro.user
+*.pro.user.*
+
+# Qt / qmake generated files and build outputs
+/build*/
+/out/
+**/.qmake.stash
+**/Makefile
+**/Makefile.*
+**/debug/
+**/release/
+**/target_wrapper.sh
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.idb
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# Local configuration and secrets
+/.hyori/
+.env
+.env.*
+config.local.json
+
+# Raw/proprietary game assets and generated training material.
+# Keep resources/txt/hyori_fewshot.json and ko_voice_index.json: the qrc file
+# requires them during the build.
+/resources/expression/
+/resources/image/
+/resources/training/
+/resources/voice/
+/resources/*.psd
+/resources/txt/*
+!/resources/txt/hyori_fewshot.json
+!/resources/txt/ko_voice_index.json
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
