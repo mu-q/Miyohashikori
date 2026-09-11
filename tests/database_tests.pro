@@ -1,4 +1,5 @@
 QT += core sql testlib
+win32: QT += axcontainer
 QT -= gui
 
 CONFIG += console testcase c++17
@@ -17,7 +18,7 @@ SOURCES += \
     ../core/data/noterepository.cpp \
     ../core/data/schedulerepository.cpp \
     ../core/schedule/courseremindercontroller.cpp \
-    ../core/schedule/wakeupscheduleimporter.cpp \
+    ../core/schedule/spreadsheetscheduleimporter.cpp \
     ../core/data/todorepository.cpp
 
 HEADERS += \
@@ -30,5 +31,5 @@ HEADERS += \
     ../core/data/noterepository.h \
     ../core/data/schedulerepository.h \
     ../core/schedule/courseremindercontroller.h \
-    ../core/schedule/wakeupscheduleimporter.h \
+    ../core/schedule/spreadsheetscheduleimporter.h \
     ../core/data/todorepository.h

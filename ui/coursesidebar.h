@@ -30,7 +30,7 @@ private:
     void addCourse();
     void editSelectedCourse();
     void deleteSelectedCourse();
-    void importWakeUp();
+    void importSpreadsheet();
     void refreshCourses();
     qint64 selectedSemesterId() const;
     int selectedWeekday() const;

@@ -56,7 +56,7 @@ QString focusStyle()
         QListWidget#courseList { background: transparent; color: #eef0f1; border: none; outline: none; }
         QListWidget#courseList::item { background: rgba(40, 46, 55, 190); border: 1px solid rgba(222, 209, 188, 45); border-radius: 7px; padding: 7px 9px; margin: 2px 0; }
         QListWidget#courseList::item:selected { background: rgba(90, 83, 75, 220); border-color: #dfc8a7; }
-        QPushButton#importWakeUp { color: #dfc8a7; }
+        QPushButton#importSpreadsheet { color: #dfc8a7; }
         QPushButton#smallCourseAction { min-width: 38px; padding: 7px 8px; }
     )");
 }

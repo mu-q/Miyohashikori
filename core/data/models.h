@@ -104,11 +104,3 @@ struct CourseOccurrence
     QDateTime endsAt;
     int week = 0;
 };
-
-struct ImportedSchedule
-{
-    QString name;
-    QDate startDate;
-    int totalWeeks = 20;
-    QVector<Course> courses;
-};

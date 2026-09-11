@@ -1,4 +1,5 @@
 QT       += core gui network multimedia multimediawidgets sql
+win32: QT += axcontainer
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -22,7 +23,7 @@ SOURCES += \
     core/data/schedulerepository.cpp \
     core/data/todorepository.cpp \
     core/schedule/courseremindercontroller.cpp \
-    core/schedule/wakeupscheduleimporter.cpp \
+    core/schedule/spreadsheetscheduleimporter.cpp \
     core/pomodorocontroller.cpp \
     core/ai/chathistory.cpp \
     core/ai/emotionparser.cpp \
@@ -55,7 +56,7 @@ HEADERS += \
     core/data/schedulerepository.h \
     core/data/todorepository.h \
     core/schedule/courseremindercontroller.h \
-    core/schedule/wakeupscheduleimporter.h \
+    core/schedule/spreadsheetscheduleimporter.h \
     core/pomodorocontroller.h \
     core/ai/chathistory.h \
     core/ai/emotionparser.h \

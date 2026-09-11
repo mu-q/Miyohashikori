@@ -314,74 +314,49 @@ DataResult<QVector<Course>> ScheduleRepository::listCourses(qint64 semesterId) c
     return DataResult<QVector<Course>>::ok(courses);
 }
 
-DataResult<Semester> ScheduleRepository::importSchedule(const ImportedSchedule &schedule)
+DataResult<int> ScheduleRepository::importCourses(qint64 semesterId,
+                                                   const QVector<Course> &courses)
 {
     if (!databaseManager_ || !databaseManager_->isReady())
-        return DataResult<Semester>::fail(unavailableError());
-    const QString semesterValidation = validateSemester(schedule.name, schedule.startDate, schedule.totalWeeks);
-    if (!semesterValidation.isEmpty())
-        return DataResult<Semester>::fail(semesterValidation);
-    for (const Course &course : schedule.courses) {
+        return DataResult<int>::fail(unavailableError());
+    if (semesterId < 1 || courses.isEmpty())
+        return DataResult<int>::fail(QStringLiteral("没有可导入的课程"));
+    for (const Course &course : courses) {
         Course candidate = course;
-        candidate.semesterId = 1;
-        const QString courseValidation = validateCourse(candidate);
-        if (!courseValidation.isEmpty())
-            return DataResult<Semester>::fail(courseValidation);
+        candidate.semesterId = semesterId;
+        const QString validation = validateCourse(candidate);
+        if (!validation.isEmpty())
+            return DataResult<int>::fail(validation);
     }
 
     QSqlDatabase database = databaseManager_->database();
     if (!database.transaction())
-        return DataResult<Semester>::fail(QStringLiteral("无法开始导入事务：%1").arg(database.lastError().text()));
-    QSqlQuery clear(database);
-    if (!clear.exec(QStringLiteral("UPDATE semesters SET is_active=0 WHERE is_active=1"))) {
-        database.rollback();
-        return DataResult<Semester>::fail(SqlHelpers::queryError(QStringLiteral("导入课表失败"), clear));
-    }
+        return DataResult<int>::fail(QStringLiteral("无法开始课程导入事务：%1").arg(database.lastError().text()));
     const QString now = SqlHelpers::utcNowText();
-    QSqlQuery semesterQuery(database);
-    semesterQuery.prepare(QStringLiteral("INSERT INTO semesters(name,start_date,total_weeks,is_active,created_at,updated_at) "
-                                         "VALUES(:name,:date,:weeks,1,:now,:now)"));
-    semesterQuery.bindValue(QStringLiteral(":name"), schedule.name.trimmed());
-    semesterQuery.bindValue(QStringLiteral(":date"), schedule.startDate.toString(Qt::ISODate));
-    semesterQuery.bindValue(QStringLiteral(":weeks"), schedule.totalWeeks);
-    semesterQuery.bindValue(QStringLiteral(":now"), now);
-    if (!semesterQuery.exec()) {
-        database.rollback();
-        return DataResult<Semester>::fail(SqlHelpers::queryError(QStringLiteral("导入学期失败"), semesterQuery));
-    }
-    const qint64 semesterId = semesterQuery.lastInsertId().toLongLong();
-    QSqlQuery courseQuery(database);
-    courseQuery.prepare(QStringLiteral("INSERT INTO courses "
+    QSqlQuery query(database);
+    query.prepare(QStringLiteral("INSERT INTO courses "
         "(semester_id,name,teacher,room,weekday,start_time,end_time,start_week,end_week,week_pattern,created_at,updated_at) "
         "VALUES(:semester,:name,:teacher,:room,:weekday,:start,:end,:start_week,:end_week,:pattern,:now,:now)"));
-    for (const Course &course : schedule.courses) {
-        courseQuery.bindValue(QStringLiteral(":semester"), semesterId);
-        courseQuery.bindValue(QStringLiteral(":name"), course.name.trimmed());
-        courseQuery.bindValue(QStringLiteral(":teacher"), SqlHelpers::nonNullText(course.teacher));
-        courseQuery.bindValue(QStringLiteral(":room"), SqlHelpers::nonNullText(course.room));
-        courseQuery.bindValue(QStringLiteral(":weekday"), course.weekday);
-        courseQuery.bindValue(QStringLiteral(":start"), course.startTime.toString(QStringLiteral("HH:mm")));
-        courseQuery.bindValue(QStringLiteral(":end"), course.endTime.toString(QStringLiteral("HH:mm")));
-        courseQuery.bindValue(QStringLiteral(":start_week"), course.startWeek);
-        courseQuery.bindValue(QStringLiteral(":end_week"), course.endWeek);
-        courseQuery.bindValue(QStringLiteral(":pattern"), static_cast<int>(course.weekPattern));
-        courseQuery.bindValue(QStringLiteral(":now"), now);
-        if (!courseQuery.exec()) {
+    for (const Course &course : courses) {
+        query.bindValue(QStringLiteral(":semester"), semesterId);
+        query.bindValue(QStringLiteral(":name"), course.name.trimmed());
+        query.bindValue(QStringLiteral(":teacher"), SqlHelpers::nonNullText(course.teacher));
+        query.bindValue(QStringLiteral(":room"), SqlHelpers::nonNullText(course.room));
+        query.bindValue(QStringLiteral(":weekday"), course.weekday);
+        query.bindValue(QStringLiteral(":start"), course.startTime.toString(QStringLiteral("HH:mm")));
+        query.bindValue(QStringLiteral(":end"), course.endTime.toString(QStringLiteral("HH:mm")));
+        query.bindValue(QStringLiteral(":start_week"), course.startWeek);
+        query.bindValue(QStringLiteral(":end_week"), course.endWeek);
+        query.bindValue(QStringLiteral(":pattern"), static_cast<int>(course.weekPattern));
+        query.bindValue(QStringLiteral(":now"), now);
+        if (!query.exec()) {
             database.rollback();
-            return DataResult<Semester>::fail(SqlHelpers::queryError(QStringLiteral("导入课程失败"), courseQuery));
+            return DataResult<int>::fail(SqlHelpers::queryError(QStringLiteral("导入课程失败"), query));
         }
     }
     if (!database.commit())
-        return DataResult<Semester>::fail(QStringLiteral("提交课表导入失败：%1").arg(database.lastError().text()));
-    Semester semester;
-    semester.id = semesterId;
-    semester.name = schedule.name.trimmed();
-    semester.startDate = schedule.startDate;
-    semester.totalWeeks = schedule.totalWeeks;
-    semester.active = true;
-    semester.createdAt = SqlHelpers::fromUtcText(now);
-    semester.updatedAt = semester.createdAt;
-    return DataResult<Semester>::ok(semester);
+        return DataResult<int>::fail(QStringLiteral("提交课程导入失败：%1").arg(database.lastError().text()));
+    return DataResult<int>::ok(courses.size());
 }
 
 DataResult<bool> ScheduleRepository::markReminderSent(qint64 courseId, const QDate &date, int leadMinutes)

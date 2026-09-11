@@ -26,7 +26,7 @@ public:
     DataResult<bool> updateCourse(const Course &course);
     DataResult<bool> removeCourse(qint64 id);
     DataResult<QVector<Course>> listCourses(qint64 semesterId) const;
-    DataResult<Semester> importSchedule(const ImportedSchedule &schedule);
+    DataResult<int> importCourses(qint64 semesterId, const QVector<Course> &courses);
 
     DataResult<bool> markReminderSent(qint64 courseId, const QDate &date, int leadMinutes);
 
