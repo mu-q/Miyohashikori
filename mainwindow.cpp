@@ -174,6 +174,7 @@ MainWindow::MainWindow(QWidget *parent)
     courseReminder_->start();
     refreshConfigHint();
     QTimer::singleShot(0, this, [this] { applyWindowPlacement(); });
+    QTimer::singleShot(120, this, &MainWindow::openFocusWindow);
 }
 
 MainWindow::~MainWindow() = default;
@@ -520,9 +521,12 @@ void MainWindow::openRecordsWindow()
 
 void MainWindow::openFocusWindow()
 {
-    if (!focusWindow_)
+    if (!focusWindow_) {
         focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_,
                                        scheduleRepository_.get(), this);
+        connect(focusWindow_, &FocusWindow::recordsRequested,
+                this, &MainWindow::openRecordsWindow);
+    }
     focusWindow_->show();
     focusWindow_->raise();
     focusWindow_->activateWindow();

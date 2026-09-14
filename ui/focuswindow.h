@@ -14,6 +14,7 @@ class QLabel;
 class QLineEdit;
 class QMediaPlayer;
 class QSpinBox;
+class QShowEvent;
 class QSystemTrayIcon;
 class QToolButton;
 class QVideoWidget;
@@ -28,8 +29,12 @@ public:
     void reloadBackground();
     void showCourseReminder(const QString &text);
 
+signals:
+    void recordsRequested();
+
 protected:
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
 
 private:
@@ -42,6 +47,7 @@ private:
     void saveDurations();
     void showNotification(const QString &title, const QString &body);
     void useFallbackBackground();
+    void updateDateTime();
 
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
@@ -54,6 +60,8 @@ private:
     QLabel *phaseLabel_ = nullptr;
     QLabel *timerLabel_ = nullptr;
     QLabel *cyclesLabel_ = nullptr;
+    QLabel *dateLabel_ = nullptr;
+    QLabel *timeLabel_ = nullptr;
     QLabel *dialogueText_ = nullptr;
     QLineEdit *input_ = nullptr;
     QToolButton *playButton_ = nullptr;
@@ -63,4 +71,5 @@ private:
     QSpinBox *longSpin_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
     CourseSidebar *courseSidebar_ = nullptr;
+    bool initialPlacementApplied_ = false;
 };

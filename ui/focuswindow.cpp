@@ -11,17 +11,23 @@
 #include <QCloseEvent>
 #include <QDateTime>
 #include <QFrame>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QMediaPlayer>
+#include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QScreen>
+#include <QShowEvent>
 #include <QSpinBox>
 #include <QStackedLayout>
 #include <QStyle>
 #include <QSystemTrayIcon>
 #include <QToolButton>
+#include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QVideoWidget>
@@ -32,30 +38,37 @@ namespace {
 QString focusStyle()
 {
     return QStringLiteral(R"(
-        QWidget#FocusWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #30343b, stop:0.52 #20242b, stop:1 #171a20); }
-        QDialog, QMessageBox { background: #20242b; }
-        QLabel { color: #edf0f1; }
-        QLabel#eyebrow { color: #c5b9a8; font-size: 12px; font-weight: 600; letter-spacing: 2px; }
-        QLabel#timer { color: #f6f1e9; font-size: 68px; font-weight: 300; letter-spacing: 3px; }
-        QLabel#cycles { color: #aeb3b7; font-size: 12px; }
-        QFrame#glass, QFrame#dialogue, QFrame#durations { background: rgba(17, 20, 25, 190); border: 1px solid rgba(222, 209, 188, 70); border-radius: 10px; }
-        QWidget#courseSidebar { background: rgba(13, 16, 21, 220); border: 1px solid rgba(222, 209, 188, 70); border-radius: 12px; }
-        QLabel#sidebarTitle { color: #f6f1e9; font-size: 20px; font-weight: 500; }
-        QLabel#scheduleMeta { color: #aeb3b7; font-size: 12px; }
-        QLabel#nextCourse { background: rgba(85, 105, 119, 105); color: #f5f1eb; border-left: 3px solid #dfc8a7; border-radius: 6px; padding: 11px; font-size: 13px; }
-        QLabel#speaker { color: #dfc8a7; font-weight: 600; font-size: 13px; }
-        QLabel#dialogueText { color: #f1f2f3; font-size: 15px; }
-        QLineEdit { background: rgba(11, 13, 17, 218); color: #f1f2f3; border: 1px solid rgba(222, 209, 188, 110); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
-        QLineEdit:focus { border: 1px solid #dfc8a7; }
-        QPushButton, QToolButton { background: rgba(33, 38, 46, 218); color: #f2eee8; border: 1px solid rgba(222, 209, 188, 105); border-radius: 7px; padding: 8px 14px; min-width: 62px; }
-        QPushButton:hover, QToolButton:hover { background: rgba(84, 78, 72, 230); border-color: #dfc8a7; }
-        QPushButton:pressed, QToolButton:pressed { background: rgba(15, 17, 21, 240); }
-        QSpinBox { background: rgba(10, 12, 16, 210); color: #f2eee8; border: 1px solid rgba(222, 209, 188, 90); border-radius: 5px; padding: 5px; min-width: 42px; }
-        QComboBox, QDateEdit, QTimeEdit { background: rgba(10, 12, 16, 210); color: #f2eee8; border: 1px solid rgba(222, 209, 188, 90); border-radius: 6px; padding: 6px 8px; }
-        QComboBox QAbstractItemView { background: #20242b; color: #f2eee8; selection-background-color: #59534d; }
-        QListWidget#courseList { background: transparent; color: #eef0f1; border: none; outline: none; }
-        QPushButton#viewSchedule { color: #d7e5e7; padding-left: 10px; padding-right: 10px; }
-        QPushButton#importSpreadsheet { color: #dfc8a7; }
+        QWidget#FocusWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #263550, stop:0.54 #171c2d, stop:1 #2d2341); }
+        QDialog, QMessageBox { background: #171c2d; }
+        QLabel { color: #edf4ff; font-family: "Microsoft YaHei UI"; }
+        QLabel#brand { color: #edf4ff; font-size: 19px; font-weight: 700; }
+        QLabel#eyebrow { color: #b9cbed; font-size: 12px; font-weight: 600; letter-spacing: 2px; }
+        QLabel#headerDate { color: #9eacd0; font-size: 12px; }
+        QLabel#headerTime { color: #edf4ff; font-size: 30px; font-weight: 300; letter-spacing: 2px; }
+        QLabel#timer { color: #f7f9ff; font-size: 54px; font-weight: 300; letter-spacing: 2px; }
+        QLabel#cycles { color: #aab7d5; font-size: 12px; }
+        QLabel#sceneHint { color: #9cabca; font-size: 12px; }
+        QFrame#scene { background: rgba(15, 21, 37, 118); border: 1px solid rgba(191, 212, 242, 46); border-radius: 24px; }
+        QFrame#timerRing { background: rgba(20, 25, 44, 220); border: 3px solid #8fcbea; border-radius: 116px; }
+        QFrame#dialogue, QFrame#durations { background: rgba(18, 24, 41, 210); border: 1px solid rgba(191, 212, 242, 70); border-radius: 14px; }
+        QWidget#courseSidebar { background: rgba(18, 24, 41, 218); border: 1px solid rgba(191, 212, 242, 70); border-radius: 16px; }
+        QLabel#sidebarTitle { color: #f4f7ff; font-size: 20px; font-weight: 600; }
+        QLabel#scheduleMeta { color: #9eacd0; font-size: 12px; }
+        QLabel#nextCourse { background: rgba(112, 136, 183, 92); color: #f5f7ff; border-left: 3px solid #bca9ef; border-radius: 8px; padding: 11px; font-size: 13px; }
+        QLabel#speaker { color: #bca9ef; font-weight: 700; font-size: 13px; }
+        QLabel#dialogueText { color: #edf2fc; font-size: 14px; }
+        QLineEdit { background: rgba(18, 24, 41, 225); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 90); border-radius: 12px; padding: 10px 13px; font-size: 14px; }
+        QLineEdit:focus { border: 1px solid #bca9ef; }
+        QPushButton, QToolButton { background: rgba(47, 57, 82, 218); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 82); border-radius: 10px; padding: 8px 14px; min-width: 58px; }
+        QPushButton:hover, QToolButton:hover { background: rgba(92, 81, 131, 225); border-color: #cbbcf0; }
+        QPushButton:pressed, QToolButton:pressed { background: rgba(39, 45, 66, 240); }
+        QToolButton#timerControl { min-width: 58px; border-radius: 18px; background: #bcd8f5; color: #1b243a; font-weight: 700; }
+        QSpinBox { background: rgba(15, 20, 35, 220); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 80); border-radius: 7px; padding: 5px; min-width: 42px; }
+        QComboBox, QDateEdit, QTimeEdit { background: rgba(15, 20, 35, 220); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 80); border-radius: 8px; padding: 6px 8px; }
+        QComboBox QAbstractItemView { background: #202941; color: #edf4ff; selection-background-color: #625680; }
+        QListWidget#courseList { background: transparent; color: #eef3fc; border: none; outline: none; }
+        QPushButton#viewSchedule { color: #dceaff; padding-left: 10px; padding-right: 10px; }
+        QPushButton#importSpreadsheet { color: #d8c9ff; }
         QPushButton#smallCourseAction { min-width: 38px; padding: 7px 8px; }
     )");
 }
@@ -70,8 +83,9 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
 {
     setObjectName(QStringLiteral("FocusWindow"));
     setWindowFlag(Qt::Window, true);
-    setWindowTitle(QStringLiteral("冰织 · 专注时间"));
-    resize(1120, 700);
+    setWindowTitle(QStringLiteral("冰织 · 陪伴与专注"));
+    setWindowIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")));
+    resize(1280, 780);
     setMinimumSize(820, 560);
     setStyleSheet(focusStyle());
 
@@ -94,18 +108,39 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     stack->setCurrentWidget(overlay);
 
     auto *root = new QVBoxLayout(overlay);
-    root->setContentsMargins(42, 30, 42, 32);
-    root->setSpacing(12);
+    root->setContentsMargins(34, 24, 34, 28);
+    root->setSpacing(14);
     auto *header = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("冰织的专注时间"));
-    title->setObjectName(QStringLiteral("eyebrow"));
+    auto *identity = new QVBoxLayout;
+    identity->setSpacing(1);
+    auto *title = new QLabel(QStringLiteral("冰织的陪伴空间"));
+    title->setObjectName(QStringLiteral("brand"));
+    dateLabel_ = new QLabel;
+    dateLabel_->setObjectName(QStringLiteral("headerDate"));
+    identity->addWidget(title);
+    identity->addWidget(dateLabel_);
+    timeLabel_ = new QLabel;
+    timeLabel_->setObjectName(QStringLiteral("headerTime"));
     cyclesLabel_ = new QLabel;
     cyclesLabel_->setObjectName(QStringLiteral("cycles"));
     auto *settings = new QToolButton;
     settings->setText(QStringLiteral("时长"));
+    settings->setToolTip(QStringLiteral("设置专注与休息时长"));
     auto *history = new QToolButton;
     history->setText(QStringLiteral("记录"));
-    header->addWidget(title); header->addStretch(); header->addWidget(cyclesLabel_); header->addSpacing(12); header->addWidget(history); header->addWidget(settings);
+    history->setToolTip(QStringLiteral("查看本次对话记录"));
+    auto *records = new QToolButton;
+    records->setText(QStringLiteral("手账"));
+    records->setToolTip(QStringLiteral("打开日记与笔记"));
+    header->addLayout(identity);
+    header->addSpacing(20);
+    header->addWidget(timeLabel_);
+    header->addStretch();
+    header->addWidget(cyclesLabel_);
+    header->addSpacing(12);
+    header->addWidget(records);
+    header->addWidget(history);
+    header->addWidget(settings);
     root->addLayout(header);
 
     durationPanel_ = new QFrame;
@@ -127,16 +162,48 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     content->setSpacing(16);
     auto *mainColumn = new QVBoxLayout;
     mainColumn->setSpacing(12);
-    mainColumn->addStretch(3);
-    auto *clock = new QFrame; clock->setObjectName(QStringLiteral("glass"));
-    auto *clockLayout = new QVBoxLayout(clock); clockLayout->setContentsMargins(44, 27, 44, 24); clockLayout->setSpacing(2);
+    auto *scene = new QFrame;
+    scene->setObjectName(QStringLiteral("scene"));
+    auto *sceneLayout = new QHBoxLayout(scene);
+    sceneLayout->setContentsMargins(24, 10, 34, 10);
+    sceneLayout->setSpacing(18);
+    auto *character = new QLabel;
+    character->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
+    character->setPixmap(QPixmap(QStringLiteral(":/assets/modes/default/neutral.png"))
+                             .scaled(300, 410, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    character->setMinimumWidth(320);
+    auto *characterColumn = new QVBoxLayout;
+    characterColumn->addStretch();
+    characterColumn->addWidget(character, 1, Qt::AlignHCenter | Qt::AlignBottom);
+    auto *sceneHint = new QLabel(QStringLiteral("今天也一起，按自己的节奏向前。"));
+    sceneHint->setObjectName(QStringLiteral("sceneHint"));
+    sceneHint->setAlignment(Qt::AlignCenter);
+    characterColumn->addWidget(sceneHint);
+    sceneLayout->addLayout(characterColumn, 1);
+
+    auto *clock = new QFrame;
+    clock->setObjectName(QStringLiteral("timerRing"));
+    clock->setFixedSize(232, 232);
+    auto *clockLayout = new QVBoxLayout(clock);
+    clockLayout->setContentsMargins(24, 28, 24, 24);
+    clockLayout->setSpacing(4);
     phaseLabel_ = new QLabel; phaseLabel_->setObjectName(QStringLiteral("eyebrow")); phaseLabel_->setAlignment(Qt::AlignCenter);
     timerLabel_ = new QLabel; timerLabel_->setObjectName(QStringLiteral("timer")); timerLabel_->setAlignment(Qt::AlignCenter);
     clockLayout->addWidget(phaseLabel_); clockLayout->addWidget(timerLabel_);
-    mainColumn->addWidget(clock, 0, Qt::AlignHCenter);
-    auto *controls = new QHBoxLayout; controls->setSpacing(10);
-    controls->addStretch(); playButton_ = new QToolButton; auto *skip = new QToolButton; skip->setText(QStringLiteral("跳过")); controls->addWidget(playButton_); controls->addWidget(skip); controls->addStretch(); mainColumn->addLayout(controls);
-    mainColumn->addStretch(2);
+    auto *controls = new QHBoxLayout;
+    controls->setSpacing(8);
+    controls->addStretch();
+    playButton_ = new QToolButton;
+    playButton_->setObjectName(QStringLiteral("timerControl"));
+    auto *skip = new QToolButton;
+    skip->setText(QStringLiteral("跳过"));
+    skip->setToolTip(QStringLiteral("进入下一个阶段"));
+    controls->addWidget(playButton_);
+    controls->addWidget(skip);
+    controls->addStretch();
+    clockLayout->addLayout(controls);
+    sceneLayout->addWidget(clock, 0, Qt::AlignCenter);
+    mainColumn->addWidget(scene, 1);
 
     auto *dialogue = new QFrame; dialogue->setObjectName(QStringLiteral("dialogue"));
     auto *dialogueLayout = new QVBoxLayout(dialogue); dialogueLayout->setContentsMargins(18, 11, 18, 13); dialogueLayout->setSpacing(5);
@@ -150,6 +217,7 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     root->addLayout(content, 1);
 
     connect(settings, &QToolButton::clicked, this, &FocusWindow::toggleDurationEditor);
+    connect(records, &QToolButton::clicked, this, &FocusWindow::recordsRequested);
     connect(history, &QToolButton::clicked, this, [this] { if (chatLogWindow_) { chatLogWindow_->show(); chatLogWindow_->raise(); chatLogWindow_->activateWindow(); } });
     connect(saveDurations, &QPushButton::clicked, this, &FocusWindow::saveDurations);
     connect(playButton_, &QToolButton::clicked, this, [this] { pomodoro_->isRunning() ? pomodoro_->pause() : pomodoro_->start(); });
@@ -172,7 +240,11 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
         connect(ai_, &IAiSession::sessionStatus, this, [this](const QString &text) { setDialogue(text); });
         connect(ai_, &IAiSession::sessionError, this, [this](const QString &text) { setDialogue(text, true); input_->setEnabled(true); });
     }
-    updatePhase(pomodoro_->phaseName()); updateTimer(pomodoro_->remainingSeconds()); updateRunning(false); reloadBackground();
+    auto *dateTimeTimer = new QTimer(this);
+    dateTimeTimer->setInterval(1000);
+    connect(dateTimeTimer, &QTimer::timeout, this, &FocusWindow::updateDateTime);
+    dateTimeTimer->start();
+    updateDateTime(); updatePhase(pomodoro_->phaseName()); updateTimer(pomodoro_->remainingSeconds()); updateRunning(false); reloadBackground();
 }
 
 void FocusWindow::showCourseReminder(const QString &text)
@@ -195,6 +267,23 @@ void FocusWindow::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     if (videoWidget_) videoWidget_->setGeometry(background_->rect());
+}
+
+void FocusWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    if (initialPlacementApplied_)
+        return;
+
+    QScreen *screen = parentWidget()
+        ? QGuiApplication::screenAt(parentWidget()->frameGeometry().center())
+        : QGuiApplication::primaryScreen();
+    if (!screen)
+        return;
+    const QRect available = screen->availableGeometry();
+    resize(qMin(1280, available.width() - 48), qMin(780, available.height() - 48));
+    move(available.center() - rect().center());
+    initialPlacementApplied_ = true;
 }
 
 void FocusWindow::closeEvent(QCloseEvent *event)
@@ -235,5 +324,13 @@ void FocusWindow::showNotification(const QString &title, const QString &body)
 void FocusWindow::useFallbackBackground()
 {
     videoPlayer_->stop(); videoWidget_->hide();
-    background_->setStyleSheet(QStringLiteral("background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #47494d, stop:0.5 #2b2d32, stop:1 #1b1d22);"));
+    background_->setStyleSheet(QStringLiteral("background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #263550, stop:0.52 #171c2d, stop:1 #2d2341);"));
+}
+
+void FocusWindow::updateDateTime()
+{
+    const QDateTime now = QDateTime::currentDateTime();
+    const QLocale chinese(QLocale::Chinese, QLocale::China);
+    dateLabel_->setText(chinese.toString(now.date(), QStringLiteral("yyyy 年 MM 月 dd 日  dddd")));
+    timeLabel_->setText(now.time().toString(QStringLiteral("HH:mm")));
 }
