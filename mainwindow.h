@@ -51,6 +51,7 @@ private:
     void applyWindowPlacement();
     void clampWindowToScreen(const QRect &avail);
     void showPetMenu(const QPoint &globalPos);
+    void minimizePetToTaskbar();
     void openFocusWindow();
     void chooseBackgroundVideo();
     void clearBackgroundVideo();

@@ -24,6 +24,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
@@ -115,11 +116,13 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() = default;
 
-//无边框、透明背景、始终置顶、不在任务栏显示独立图标的浮动窗口
+// 无边框、透明背景、始终置顶，同时保留标准任务栏入口。
 void MainWindow::applyWindowChrome()
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
-    setAttribute(Qt::WA_TranslucentBackground,true);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
+    setWindowTitle(QStringLiteral("冰织"));
+    setWindowIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")));
+    setAttribute(Qt::WA_TranslucentBackground, true);
     setStyleSheet(QStringLiteral("#MainWindowPet { background:transparent; }"));
     setObjectName(QStringLiteral("MainWindowPet"));
 }
@@ -409,6 +412,9 @@ void MainWindow::endDrag()
 void MainWindow::showPetMenu(const QPoint &globalPos)
 {
     QMenu menu;
+    menu.addAction(QStringLiteral("隐藏冰织（最小化到任务栏）"),
+                   this, &MainWindow::minimizePetToTaskbar);
+    menu.addSeparator();
     menu.addAction(QStringLiteral("本次对话记录"), this, &MainWindow::showChatHistory);
     menu.addAction(QStringLiteral("打开专注模式"), this, &MainWindow::openFocusWindow);
     menu.addAction(QStringLiteral("选择背景视频"), this, &MainWindow::chooseBackgroundVideo);
@@ -432,6 +438,12 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
     menu.addSeparator();
     menu.addAction(QStringLiteral("退出"), qApp, &QApplication::quit);
     menu.exec(globalPos);
+}
+
+void MainWindow::minimizePetToTaskbar()
+{
+    persistWindowPosition();
+    showMinimized();
 }
 
 void MainWindow::openFocusWindow()
