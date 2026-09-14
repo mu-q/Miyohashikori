@@ -385,7 +385,8 @@ void CourseSidebar::importSpreadsheet()
     const QString file = QFileDialog::getOpenFileName(this, QStringLiteral("导入课程表"), {},
         QStringLiteral("课程表 (*.xlsx *.xls *.csv *.tsv);;Excel 工作簿 (*.xlsx *.xls);;CSV/TSV 文件 (*.csv *.tsv);;所有文件 (*)"));
     if (file.isEmpty()) return;
-    const auto parsed = SpreadsheetScheduleImporter::parseFile(file, semesterIt->totalWeeks);
+    const auto parsed = SpreadsheetScheduleImporter::parseFile(
+        file, semesterIt->totalWeeks, semesterIt->startDate);
     if (!parsed.success) {
         QMessageBox::warning(this, QStringLiteral("导入失败"),
             QStringLiteral("%1\n\n%2").arg(parsed.error, SpreadsheetScheduleImporter::columnHelp()));

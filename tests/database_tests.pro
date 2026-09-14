@@ -1,4 +1,5 @@
 QT += core sql testlib
+QT += gui-private
 win32: QT += axcontainer
 QT -= gui
 

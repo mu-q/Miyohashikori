@@ -1,4 +1,5 @@
 QT       += core gui network multimedia multimediawidgets sql
+QT       += gui-private
 win32: QT += axcontainer
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets

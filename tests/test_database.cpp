@@ -14,10 +14,6 @@
 #include <QTest>
 #include <QUuid>
 
-#ifdef Q_OS_WIN
-#include <QAxObject>
-#endif
-
 namespace {
 
 QString temporaryDatabasePath(QTemporaryDir &directory)
@@ -97,7 +93,7 @@ private slots:
     void todoCrudFiltersAndCompletionTime();
     void scheduleCrudImportAndReminderDedupe();
     void spreadsheetScheduleParsing();
-    void excelScheduleParsing();
+    void xlsxScheduleParsing();
 };
 
 void DatabaseTests::initTestCase()
@@ -414,63 +410,61 @@ void DatabaseTests::spreadsheetScheduleParsing()
     const auto tsvResult = SpreadsheetScheduleImporter::parseCsv(tsv, 18);
     QVERIFY2(tsvResult.success, qPrintable(tsvResult.error));
     QCOMPARE(tsvResult.value.first().weekPattern, CourseWeekPattern::EvenWeeks);
+
+    const QByteArray wakeUpWorkbookLayout = QStringLiteral(
+        "课程名称,星期,节次,开始时间,结束时间,教室,教师,首次日期,最后日期,周次,次数,备注\n"
+        "人工智能,周一,5-6节,14:00,15:40,明理南108,魏老师,2026-05-11 14:00:00,2026-06-29 14:00:00,第11-18周,8,\n"
+        "人工智能实验,周一,9-10节,17:50,19:20,A211,,2026-06-01 17:50:00,2026-06-22 17:50:00,第14-17周,4,\n")
+        .toUtf8();
+    const auto wakeUpLayoutResult = SpreadsheetScheduleImporter::parseCsv(
+        wakeUpWorkbookLayout, 18, QDate(2026, 3, 2));
+    QVERIFY2(wakeUpLayoutResult.success, qPrintable(wakeUpLayoutResult.error));
+    QCOMPARE(wakeUpLayoutResult.value.size(), 2);
+    QCOMPARE(wakeUpLayoutResult.value.first().startWeek, 11);
+    QCOMPARE(wakeUpLayoutResult.value.first().endWeek, 18);
+
+    const QByteArray looselyNamed = QStringLiteral(
+        "Venue,Teaching Weeks,Time Range,Subject,Instructor,Class Day\n"
+        "实验楼 201,1 3 5 7,08:00-09:40,离散数学,陈老师,Monday\n")
+        .toUtf8();
+    const auto looselyNamedResult = SpreadsheetScheduleImporter::parseCsv(looselyNamed, 18);
+    QVERIFY2(looselyNamedResult.success, qPrintable(looselyNamedResult.error));
+    QCOMPARE(looselyNamedResult.value.first().room, QStringLiteral("实验楼 201"));
+    QCOMPARE(looselyNamedResult.value.first().startWeek, 1);
+    QCOMPARE(looselyNamedResult.value.first().endWeek, 7);
+    QCOMPARE(looselyNamedResult.value.first().weekPattern, CourseWeekPattern::OddWeeks);
+
+    const QByteArray dateDriven = QStringLiteral(
+        "科目,首次上课,最后上课,开始时间,结束时间\n"
+        "项目实践,2026-03-10 10:00:00,2026-04-21 10:00:00,10:00,11:40\n")
+        .toUtf8();
+    const auto dateDrivenResult = SpreadsheetScheduleImporter::parseCsv(
+        dateDriven, 18, QDate(2026, 3, 2));
+    QVERIFY2(dateDrivenResult.success, qPrintable(dateDrivenResult.error));
+    QCOMPARE(dateDrivenResult.value.first().weekday, 2);
+    QCOMPARE(dateDrivenResult.value.first().startWeek, 2);
+    QCOMPARE(dateDrivenResult.value.first().endWeek, 8);
+
     QVERIFY(!SpreadsheetScheduleImporter::parseCsv(QByteArrayLiteral("bad,data\n1,2"), 18).success);
     QVERIFY(!SpreadsheetScheduleImporter::parseCsv(
         QStringLiteral("课程名称,星期,开始时间,结束时间,开始周,结束周\n数学,周一,08:00,09:00,1,99")
             .toUtf8(), 18).success);
 }
 
-void DatabaseTests::excelScheduleParsing()
+void DatabaseTests::xlsxScheduleParsing()
 {
-#ifdef Q_OS_WIN
-    QAxObject excel(QStringLiteral("Excel.Application"));
-    if (excel.isNull())
-        QSKIP("Microsoft Excel is not installed; CSV coverage remains active.");
-    excel.setProperty("Visible", false);
-    excel.setProperty("DisplayAlerts", false);
-    QTemporaryDir directory;
-    QVERIFY(directory.isValid());
-    const QString path = QDir::toNativeSeparators(directory.filePath(QStringLiteral("schedule.xlsx")));
-    QAxObject *workbooks = excel.querySubObject("Workbooks");
-    QVERIFY(workbooks);
-    QAxObject *workbook = workbooks->querySubObject("Add()");
-    QVERIFY(workbook);
-    QAxObject *sheet = workbook->querySubObject("Worksheets(int)", 1);
-    QVERIFY(sheet);
-    const QVector<QVector<QVariant>> rows = {
-        {QStringLiteral("课程名称"), QStringLiteral("星期"), QStringLiteral("开始时间"),
-         QStringLiteral("结束时间"), QStringLiteral("开始周"), QStringLiteral("结束周"),
-         QStringLiteral("单双周"), QStringLiteral("教师"), QStringLiteral("教室")},
-        {QStringLiteral("计算机网络"), QStringLiteral("周四"), 8.0 / 24.0,
-         (9.0 * 60.0 + 40.0) / 1440.0, 1, 18, QStringLiteral("双周"),
-         QStringLiteral("赵老师"), QStringLiteral("C302")}
-    };
-    for (int row = 0; row < rows.size(); ++row) {
-        for (int column = 0; column < rows.at(row).size(); ++column) {
-            QAxObject *cell = sheet->querySubObject("Cells(int,int)", row + 1, column + 1);
-            QVERIFY(cell);
-            cell->setProperty("Value2", rows.at(row).at(column));
-            delete cell;
-        }
-    }
-    workbook->dynamicCall("SaveAs(const QString&,int)", path, 51);
-    workbook->dynamicCall("Close(Boolean)", false);
-    excel.dynamicCall("Quit()");
-    delete sheet;
-    delete workbook;
-    delete workbooks;
-
-    const auto parsed = SpreadsheetScheduleImporter::parseFile(path, 18);
+    const QString path = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(
+        QStringLiteral("../../resources/WakeUp课程表_大三下.xlsx"));
+    QVERIFY2(QFileInfo::exists(path), qPrintable(QStringLiteral("缺少测试工作簿：%1").arg(path)));
+    const auto parsed = SpreadsheetScheduleImporter::parseFile(path, 18, QDate(2026, 3, 2));
     QVERIFY2(parsed.success, qPrintable(parsed.error));
-    QCOMPARE(parsed.value.size(), 1);
-    QCOMPARE(parsed.value.first().name, QStringLiteral("计算机网络"));
-    QCOMPARE(parsed.value.first().weekday, 4);
+    QCOMPARE(parsed.value.size(), 22);
+    QCOMPARE(parsed.value.first().name, QStringLiteral("大数据技术及应用"));
+    QCOMPARE(parsed.value.first().weekday, 1);
     QCOMPARE(parsed.value.first().startTime, QTime(8, 0));
     QCOMPARE(parsed.value.first().endTime, QTime(9, 40));
-    QCOMPARE(parsed.value.first().weekPattern, CourseWeekPattern::EvenWeeks);
-#else
-    QSKIP("Excel automation is only available on Windows.");
-#endif
+    QCOMPARE(parsed.value.first().startWeek, 1);
+    QCOMPARE(parsed.value.first().endWeek, 10);
 }
 
 QTEST_GUILESS_MAIN(DatabaseTests)
