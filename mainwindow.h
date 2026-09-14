@@ -10,6 +10,7 @@ class CharacterSpriteView;
 class ConfigManager;
 class IAiSession;
 class QLineEdit;
+class QToolButton;
 class QCloseEvent;
 class QShowEvent;
 class QRect;
@@ -21,8 +22,11 @@ class FocusWindow;
 class ConversationLog;
 class ChatLogWindow;
 class DatabaseManager;
+class JournalRepository;
+class NoteRepository;
 class ScheduleRepository;
 class CourseReminderController;
+class RecordsWindow;
 struct CourseOccurrence;
 
 class MainWindow : public QWidget
@@ -52,6 +56,7 @@ private:
     void clampWindowToScreen(const QRect &avail);
     void showPetMenu(const QPoint &globalPos);
     void minimizePetToTaskbar();
+    void openRecordsWindow();
     void openFocusWindow();
     void chooseBackgroundVideo();
     void clearBackgroundVideo();
@@ -67,8 +72,11 @@ private:
     CharacterSpriteView *sprite_ = nullptr;
     ReplyBubble *replyBubble_ = nullptr;
     QLineEdit *inputLine_ = nullptr;
+    QToolButton *recordsButton_ = nullptr;
     ConfigManager *configManager_ = nullptr;
     std::unique_ptr<DatabaseManager> databaseManager_;
+    std::unique_ptr<JournalRepository> journalRepository_;
+    std::unique_ptr<NoteRepository> noteRepository_;
     std::unique_ptr<ScheduleRepository> scheduleRepository_;
     CourseReminderController *courseReminder_ = nullptr;
     IAiSession *ai_ = nullptr;
@@ -76,6 +84,7 @@ private:
     TtsClient *ttsClient_ = nullptr;
     ConversationLog *conversationLog_ = nullptr;
     ChatLogWindow *chatLogWindow_ = nullptr;
+    RecordsWindow *recordsWindow_ = nullptr;
     FocusWindow *focusWindow_ = nullptr;
     QString lastAssistantText_;
     QString lastAssistantSpeechText_;
