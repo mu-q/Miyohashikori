@@ -9,6 +9,7 @@ class QLabel;
 class QListWidget;
 class QToolButton;
 class ScheduleRepository;
+class ScheduleWindow;
 
 class CourseSidebar : public QWidget
 {
@@ -31,6 +32,7 @@ private:
     void editSelectedCourse();
     void deleteSelectedCourse();
     void importSpreadsheet();
+    void openSchedule();
     void refreshCourses();
     qint64 selectedSemesterId() const;
     int selectedWeekday() const;
@@ -42,6 +44,7 @@ private:
     QLabel *nextCourseLabel_ = nullptr;
     QListWidget *courseList_ = nullptr;
     QToolButton *semesterMenuButton_ = nullptr;
+    ScheduleWindow *scheduleWindow_ = nullptr;
     QVector<Semester> semesters_;
     QVector<Course> visibleCourses_;
 };

@@ -80,6 +80,7 @@ private:
     QString lastAssistantSpeechText_;
     QString pendingVoiceText_;
     QString pendingVoiceEmotion_;
+    bool pendingCourseReminder_ = false;
     quint64 pendingTtsRequestId_ = 0;
 
     bool dragging_ = false;

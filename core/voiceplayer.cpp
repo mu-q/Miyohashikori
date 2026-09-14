@@ -4,6 +4,7 @@
 
 #include <QAudioOutput>
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -410,6 +411,10 @@ VoicePlayer::VoicePlayer(QObject *parent)
     , audioOutput_(new QAudioOutput(this))
 {
     player_->setAudioOutput(audioOutput_);
+    connect(player_, &QMediaPlayer::errorOccurred, this,
+            [](QMediaPlayer::Error, const QString &message) {
+                qWarning().noquote() << QStringLiteral("语音播放失败：%1").arg(message);
+            });
 }
 
 void VoicePlayer::playReply(const QString &replyText, const QString &emotion, const AppConfig &config)
@@ -447,6 +452,25 @@ void VoicePlayer::playReply(const QString &replyText, const QString &emotion, co
 
     player_->setSource(QUrl::fromLocalFile(filePath));
     player_->play();
+}
+
+bool VoicePlayer::playCourseReminder(const AppConfig &config)
+{
+    if (!config.voiceEnabled)
+        return false;
+
+    // 课程提醒需要始终有声音；这些台词都表达“该出发了”，不依赖课程名语义匹配。
+    const QString filePath = pickRandomVoice({
+        QStringLiteral("ko/ko1189.ogg"),
+        QStringLiteral("ko/ko1201.ogg"),
+        QStringLiteral("ko/ko3736.ogg")
+    });
+    if (filePath.isEmpty()) {
+        qWarning().noquote() << QStringLiteral("课程提醒语音不可用：没有找到本地回退音频。");
+        return false;
+    }
+    playFile(filePath, config.volume);
+    return true;
 }
 
 void VoicePlayer::stop()

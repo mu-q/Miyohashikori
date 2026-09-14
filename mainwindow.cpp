@@ -96,6 +96,7 @@ MainWindow::MainWindow(QWidget *parent)
         setInputWaiting(true);
         ttsClient_->cancel();
         pendingTtsRequestId_ = 0;
+        pendingCourseReminder_ = false;
         voicePlayer_->stop();
         conversationLog_->addUser(text);
         ai_->submit(text);
@@ -138,8 +139,11 @@ void MainWindow::wireAiSession()
                 if (requestId != pendingTtsRequestId_)
                     return;
                 configManager_->load();
-                voicePlayer_->playFile(filePath, configManager_->config().volume);
+                const AppConfig config = configManager_->config();
+                if (config.voiceEnabled)
+                    voicePlayer_->playFile(filePath, config.volume);
                 pendingTtsRequestId_ = 0;
+                pendingCourseReminder_ = false;
             });
     connect(ttsClient_, &TtsClient::synthesisFailed, this,
             [this](quint64 requestId, const QString &reason) {
@@ -148,9 +152,13 @@ void MainWindow::wireAiSession()
                 qWarning().noquote() << QStringLiteral("GPT-SoVITS 合成失败，回退原作语音：%1")
                                              .arg(reason);
                 configManager_->load();
-                voicePlayer_->playReply(pendingVoiceText_, pendingVoiceEmotion_,
-                                        configManager_->config());
+                if (pendingCourseReminder_)
+                    voicePlayer_->playCourseReminder(configManager_->config());
+                else
+                    voicePlayer_->playReply(pendingVoiceText_, pendingVoiceEmotion_,
+                                            configManager_->config());
                 pendingTtsRequestId_ = 0;
+                pendingCourseReminder_ = false;
             });
 
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
@@ -175,6 +183,7 @@ void MainWindow::wireAiSession()
         const AppConfig config = configManager_->config();
         pendingVoiceText_ = lastAssistantText_;
         pendingVoiceEmotion_ = emotion;
+        pendingCourseReminder_ = false;
 
         if (!config.voiceEnabled) {
             ttsClient_->cancel();
@@ -446,19 +455,26 @@ void MainWindow::handleCourseReminder(const CourseOccurrence &, int,
 
     configManager_->load();
     const AppConfig config = configManager_->config();
-    if (!config.voiceEnabled)
+    if (!config.voiceEnabled) {
+        ttsClient_->cancel();
+        pendingTtsRequestId_ = 0;
+        pendingCourseReminder_ = false;
+        voicePlayer_->stop();
         return;
+    }
     ttsClient_->cancel();
     voicePlayer_->stop();
     pendingVoiceText_ = displayText;
     pendingVoiceEmotion_ = QStringLiteral("concerned");
+    pendingCourseReminder_ = true;
     if (ttsClient_->isConfigured(config)) {
         AppConfig japaneseTtsConfig = config;
         japaneseTtsConfig.ttsTextLanguage = QStringLiteral("ja");
         pendingTtsRequestId_ = ttsClient_->synthesize(speechText, japaneseTtsConfig);
     } else {
         pendingTtsRequestId_ = 0;
-        voicePlayer_->playReply(displayText, pendingVoiceEmotion_, config);
+        voicePlayer_->playCourseReminder(config);
+        pendingCourseReminder_ = false;
     }
 }
 

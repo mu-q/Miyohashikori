@@ -34,6 +34,7 @@ SOURCES += \
     ui/replybubble.cpp \
     ui/chatlogwindow.cpp \
     ui/coursesidebar.cpp \
+    ui/schedulewindow.cpp \
     ui/focuswindow.cpp
 
 RESOURCES += \
@@ -68,6 +69,7 @@ HEADERS += \
     ui/replybubble.h \
     ui/chatlogwindow.h \
     ui/coursesidebar.h \
+    ui/schedulewindow.h \
     ui/focuswindow.h
 
 # Default rules for deployment.
