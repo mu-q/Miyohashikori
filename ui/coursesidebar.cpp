@@ -1,4 +1,5 @@
 #include "coursesidebar.h"
+#include "schedulewindow.h"
 
 #include "../core/data/schedulerepository.h"
 #include "../core/schedule/courseremindercontroller.h"
@@ -16,8 +17,10 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QMessageBox>
+#include <QPainter>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QStyledItemDelegate>
 #include <QTimeEdit>
 #include <QTimer>
 #include <QToolButton>
@@ -26,6 +29,63 @@
 #include <algorithm>
 
 namespace {
+
+constexpr int kCourseStateRole = Qt::UserRole + 1;
+
+enum class CourseItemState
+{
+    Default,
+    Finished,
+    Next,
+    Later
+};
+
+class CourseItemDelegate final : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override
+    {
+        const CourseItemState state = static_cast<CourseItemState>(
+            index.data(kCourseStateRole).toInt());
+        QColor background(40, 46, 55, 190);
+        QColor border(222, 209, 188, 45);
+        QColor foreground(238, 240, 241);
+        if (state == CourseItemState::Finished) {
+            background = QColor(40, 45, 52, 205);
+            border = QColor(77, 86, 97, 155);
+            foreground = QColor(151, 158, 166);
+        } else if (state == CourseItemState::Next) {
+            background = QColor(91, 73, 55, 230);
+            border = QColor(223, 200, 167, 235);
+            foreground = QColor(255, 248, 237);
+        } else if (state == CourseItemState::Later) {
+            background = QColor(37, 62, 68, 220);
+            border = QColor(82, 119, 128, 205);
+            foreground = QColor(232, 243, 243);
+        }
+        if (option.state.testFlag(QStyle::State_Selected)) {
+            background = background.lighter(122);
+            border = QColor(242, 227, 200);
+        } else if (option.state.testFlag(QStyle::State_MouseOver)) {
+            background = background.lighter(112);
+        }
+
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setPen(QPen(border, option.state.testFlag(QStyle::State_Selected) ? 1.5 : 1.0));
+        painter->setBrush(background);
+        painter->drawRoundedRect(option.rect.adjusted(1, 2, -1, -2), 7, 7);
+        painter->setPen(foreground);
+        painter->setFont(option.font);
+        painter->drawText(option.rect.adjusted(10, 5, -9, -5),
+                          Qt::AlignLeft | Qt::AlignVCenter | Qt::TextWordWrap,
+                          index.data(Qt::DisplayRole).toString());
+        painter->restore();
+    }
+};
 
 const QStringList kWeekdays = {QStringLiteral("周一"), QStringLiteral("周二"),
                                QStringLiteral("周三"), QStringLiteral("周四"),
@@ -191,15 +251,22 @@ CourseSidebar::CourseSidebar(ScheduleRepository *repository, QWidget *parent)
     nextCourseLabel_->setWordWrap(true);
     root->addWidget(nextCourseLabel_);
 
+    auto *dayActions = new QHBoxLayout;
     dayBox_ = new QComboBox(this);
     dayBox_->addItem(QStringLiteral("今天"), 0);
     for (int day = 1; day <= 7; ++day)
         dayBox_->addItem(kWeekdays.at(day - 1), day);
-    root->addWidget(dayBox_);
+    auto *viewSchedule = new QPushButton(QStringLiteral("查看周课表"), this);
+    viewSchedule->setObjectName(QStringLiteral("viewSchedule"));
+    dayActions->addWidget(dayBox_, 1);
+    dayActions->addWidget(viewSchedule);
+    root->addLayout(dayActions);
     courseList_ = new QListWidget(this);
     courseList_->setObjectName(QStringLiteral("courseList"));
     courseList_->setAlternatingRowColors(false);
     courseList_->setContextMenuPolicy(Qt::CustomContextMenu);
+    courseList_->setMouseTracking(true);
+    courseList_->setItemDelegate(new CourseItemDelegate(courseList_));
     root->addWidget(courseList_, 1);
 
     auto *courseActions = new QHBoxLayout;
@@ -226,6 +293,7 @@ CourseSidebar::CourseSidebar(ScheduleRepository *repository, QWidget *parent)
     connect(edit, &QPushButton::clicked, this, &CourseSidebar::editSelectedCourse);
     connect(remove, &QPushButton::clicked, this, &CourseSidebar::deleteSelectedCourse);
     connect(import, &QPushButton::clicked, this, &CourseSidebar::importSpreadsheet);
+    connect(viewSchedule, &QPushButton::clicked, this, &CourseSidebar::openSchedule);
     connect(courseList_, &QListWidget::itemDoubleClicked, this, [this] { editSelectedCourse(); });
     auto *clock = new QTimer(this);
     clock->setInterval(60000);
@@ -269,15 +337,21 @@ void CourseSidebar::refreshCourses()
                             : QStringLiteral("非教学周 · 共 %1 周").arg(semester.totalWeeks));
     const auto courses = repository_->listCourses(semester.id);
     if (!courses.success) { emit statusMessage(courses.error, true); return; }
+    const QDate today = QDate::currentDate();
+    const QTime now = QTime::currentTime();
     const int weekday = selectedWeekday();
     Course next;
     bool hasNext = false;
     for (const Course &course : courses.value) {
-        if (course.weekday == QDate::currentDate().dayOfWeek()
+        if (course.weekday == today.dayOfWeek()
             && CourseReminderController::occursInWeek(course, currentWeek)
-            && course.endTime > QTime::currentTime()
+            && course.endTime > now
             && (!hasNext || course.startTime < next.startTime)) { next = course; hasNext = true; }
-        if (course.weekday != weekday) continue;
+    }
+    const bool showingToday = weekday == today.dayOfWeek();
+    for (const Course &course : courses.value) {
+        if (course.weekday != weekday
+            || !CourseReminderController::occursInWeek(course, currentWeek)) continue;
         visibleCourses_.append(course);
         const QString detail = QStringLiteral("%1–%2  %3\n%4%5 · 第 %6–%7 周 %8")
             .arg(course.startTime.toString(QStringLiteral("HH:mm")), course.endTime.toString(QStringLiteral("HH:mm")), course.name,
@@ -286,12 +360,29 @@ void CourseSidebar::refreshCourses()
             .arg(course.startWeek).arg(course.endWeek).arg(patternText(course.weekPattern));
         auto *item = new QListWidgetItem(detail, courseList_);
         item->setData(Qt::UserRole, course.id);
+        CourseItemState state = CourseItemState::Default;
+        if (showingToday && CourseReminderController::occursInWeek(course, currentWeek)) {
+            if (course.endTime <= now)
+                state = CourseItemState::Finished;
+            else if (hasNext && course.id == next.id)
+                state = CourseItemState::Next;
+            else
+                state = CourseItemState::Later;
+        }
+        item->setData(kCourseStateRole, static_cast<int>(state));
+        if (state == CourseItemState::Finished)
+            item->setToolTip(QStringLiteral("今天已结束"));
+        else if (state == CourseItemState::Next)
+            item->setToolTip(course.startTime <= now ? QStringLiteral("正在上课")
+                                                     : QStringLiteral("今天下一节"));
+        else if (state == CourseItemState::Later)
+            item->setToolTip(QStringLiteral("今天之后的课程"));
         item->setSizeHint(QSize(0, 61));
     }
     if (visibleCourses_.isEmpty())
         courseList_->addItem(QStringLiteral("这一天还没有课程。"));
     if (hasNext) {
-        const int minutes = qMax(0, QTime::currentTime().secsTo(next.startTime) / 60);
+        const int minutes = qMax(0, now.secsTo(next.startTime) / 60);
         nextCourseLabel_->setText(QStringLiteral("下一节 · %1\n%2  %3%4")
             .arg(next.name, next.startTime.toString(QStringLiteral("HH:mm")))
             .arg(minutes > 0 ? QStringLiteral("还有 %1 分钟").arg(minutes) : QStringLiteral("正在上课"),
@@ -399,6 +490,18 @@ void CourseSidebar::importSpreadsheet()
     if (!imported.success) { QMessageBox::warning(this, QStringLiteral("导入失败"), imported.error); return; }
     refreshCourses(); emit scheduleChanged();
     emit statusMessage(QStringLiteral("已从表格导入 %1 条课程安排。").arg(imported.value), false);
+}
+
+void CourseSidebar::openSchedule()
+{
+    if (!scheduleWindow_) {
+        scheduleWindow_ = new ScheduleWindow(repository_, this);
+        connect(this, &CourseSidebar::scheduleChanged, scheduleWindow_, &ScheduleWindow::refresh);
+    }
+    scheduleWindow_->refresh();
+    scheduleWindow_->show();
+    scheduleWindow_->raise();
+    scheduleWindow_->activateWindow();
 }
 
 qint64 CourseSidebar::selectedSemesterId() const

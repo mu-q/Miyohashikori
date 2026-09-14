@@ -54,8 +54,7 @@ QString focusStyle()
         QComboBox, QDateEdit, QTimeEdit { background: rgba(10, 12, 16, 210); color: #f2eee8; border: 1px solid rgba(222, 209, 188, 90); border-radius: 6px; padding: 6px 8px; }
         QComboBox QAbstractItemView { background: #20242b; color: #f2eee8; selection-background-color: #59534d; }
         QListWidget#courseList { background: transparent; color: #eef0f1; border: none; outline: none; }
-        QListWidget#courseList::item { background: rgba(40, 46, 55, 190); border: 1px solid rgba(222, 209, 188, 45); border-radius: 7px; padding: 7px 9px; margin: 2px 0; }
-        QListWidget#courseList::item:selected { background: rgba(90, 83, 75, 220); border-color: #dfc8a7; }
+        QPushButton#viewSchedule { color: #d7e5e7; padding-left: 10px; padding-right: 10px; }
         QPushButton#importSpreadsheet { color: #dfc8a7; }
         QPushButton#smallCourseAction { min-width: 38px; padding: 7px 8px; }
     )");
