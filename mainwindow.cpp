@@ -6,6 +6,11 @@
 #include "core/apppaths.h"
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
+#include "core/data/databasemanager.h"
+#include "core/data/journalrepository.h"
+#include "core/data/noterepository.h"
+#include "core/data/schedulerepository.h"
+#include "core/schedule/courseremindercontroller.h"
 #include "core/spritecatalog.h"
 #include "core/ttsclient.h"
 #include "core/voiceplayer.h"
@@ -13,6 +18,7 @@
 #include "ui/replybubble.h"
 #include "ui/focuswindow.h"
 #include "ui/chatlogwindow.h"
+#include "ui/recordswindow.h"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -21,16 +27,57 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPixmap>
 #include <QRect>
 #include <QScreen>
 #include <QShowEvent>
 #include <QStyleHints>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWheelEvent>
+
+namespace {
+
+QIcon createRecordsIcon()
+{
+    QPixmap pixmap(32, 32);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    QPainterPath pages;
+    pages.moveTo(4.5, 7.5);
+    pages.quadTo(10.5, 5.2, 15.8, 9.1);
+    pages.quadTo(21.5, 5.2, 27.5, 7.5);
+    pages.lineTo(27.5, 24.5);
+    pages.quadTo(21.2, 22.2, 15.8, 26.2);
+    pages.quadTo(10.5, 22.2, 4.5, 24.5);
+    pages.closeSubpath();
+    painter.setPen(QPen(QColor(77, 67, 119), 1.8, Qt::SolidLine, Qt::RoundCap,
+                        Qt::RoundJoin));
+    painter.setBrush(QColor(238, 245, 255));
+    painter.drawPath(pages);
+    painter.drawLine(QPointF(15.8, 9.2), QPointF(15.8, 26.0));
+
+    painter.setPen(QPen(QColor(136, 104, 161), 2.6, Qt::SolidLine, Qt::RoundCap));
+    painter.drawLine(QPointF(22.6, 5.0), QPointF(12.2, 19.0));
+    painter.setPen(QPen(QColor(224, 188, 223), 1.6, Qt::SolidLine, Qt::RoundCap));
+    painter.drawLine(QPointF(24.0, 6.0), QPointF(13.6, 20.0));
+    painter.setBrush(QColor(136, 104, 161));
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(QPointF(11.7, 20.6), 2.0, 2.0);
+    return QIcon(pixmap);
+}
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
@@ -38,7 +85,9 @@ MainWindow::MainWindow(QWidget *parent)
     , sprite_(new CharacterSpriteView(catalog_, this))
     , replyBubble_(new ReplyBubble(this))
     , inputLine_(new QLineEdit(this))
+    , recordsButton_(new QToolButton(this))
     , configManager_(new ConfigManager(this))
+    , databaseManager_(std::make_unique<DatabaseManager>())
     , ai_(nullptr)
     , voicePlayer_(new VoicePlayer(this))
     , ttsClient_(new TtsClient(this))
@@ -47,7 +96,15 @@ MainWindow::MainWindow(QWidget *parent)
 {
     applyWindowChrome();
     configManager_->load();
+    if (!databaseManager_->initialize()) {
+        qWarning().noquote() << QStringLiteral("扩展数据功能初始化失败：%1")
+                                    .arg(databaseManager_->errorString());
+    }
+    journalRepository_ = std::make_unique<JournalRepository>(databaseManager_.get());
+    noteRepository_ = std::make_unique<NoteRepository>(databaseManager_.get());
+    scheduleRepository_ = std::make_unique<ScheduleRepository>(databaseManager_.get());
     ai_ = new OpenAiChatSession(configManager_, this);
+    courseReminder_ = new CourseReminderController(scheduleRepository_.get(), this);
 
     inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));
     inputLine_->setClearButtonEnabled(true);
@@ -55,12 +112,27 @@ MainWindow::MainWindow(QWidget *parent)
         QStringLiteral("QLineEdit { background: rgba(40,44,56,0.92); color: #e8eaf0; "
                        "border: 1px solid #5c6370; border-radius: 6px; padding: 6px; }"));
 
+    recordsButton_->setIcon(createRecordsIcon());
+    recordsButton_->setIconSize(QSize(28, 28));
+    recordsButton_->setFixedSize(42, 42);
+    recordsButton_->setToolTip(QStringLiteral("打开日记与笔记"));
+    recordsButton_->setCursor(Qt::PointingHandCursor);
+    recordsButton_->setStyleSheet(QStringLiteral(
+        "QToolButton { background:rgba(212,226,252,0.94); border:1px solid rgba(255,255,255,0.8); "
+        "border-radius:21px; padding:5px; }"
+        "QToolButton:hover { background:#f2ecff; border-color:#cbbcf0; }"
+        "QToolButton:pressed { background:#b9ccea; padding-top:7px; }"));
+
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(8, 8, 8, 8);
     root->setSpacing(6);
     root->addWidget(sprite_, 0, Qt::AlignHCenter);
     root->addWidget(replyBubble_, 0, Qt::AlignHCenter);
-    root->addWidget(inputLine_);
+    auto *composer = new QHBoxLayout;
+    composer->setSpacing(7);
+    composer->addWidget(inputLine_, 1);
+    composer->addWidget(recordsButton_);
+    root->addLayout(composer);
     setLayout(root);
 
     sprite_->setCursor(Qt::OpenHandCursor);
@@ -69,6 +141,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(sprite_, &CharacterSpriteView::rightClicked, this, [this] {
         showPetMenu(QCursor::pos());
     });
+    connect(recordsButton_, &QToolButton::clicked, this, &MainWindow::openRecordsWindow);
 
     connect(catalog_, &SpriteCatalog::emotionChanged, this, [this](const QString &) {
         syncChromeToSprite();
@@ -86,6 +159,7 @@ MainWindow::MainWindow(QWidget *parent)
         setInputWaiting(true);
         ttsClient_->cancel();
         pendingTtsRequestId_ = 0;
+        pendingCourseReminder_ = false;
         voicePlayer_->stop();
         conversationLog_->addUser(text);
         ai_->submit(text);
@@ -93,17 +167,25 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     wireAiSession();
+    connect(courseReminder_, &CourseReminderController::reminderDue,
+            this, &MainWindow::handleCourseReminder);
+    connect(courseReminder_, &CourseReminderController::reminderError, this,
+            [](const QString &error) { qWarning().noquote() << QStringLiteral("课程提醒：%1").arg(error); });
+    courseReminder_->start();
     refreshConfigHint();
     QTimer::singleShot(0, this, [this] { applyWindowPlacement(); });
+    QTimer::singleShot(120, this, &MainWindow::openFocusWindow);
 }
 
 MainWindow::~MainWindow() = default;
 
-//无边框、透明背景、始终置顶、不在任务栏显示独立图标的浮动窗口
+// 无边框、透明背景、始终置顶，同时保留标准任务栏入口。
 void MainWindow::applyWindowChrome()
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
-    setAttribute(Qt::WA_TranslucentBackground,true);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
+    setWindowTitle(QStringLiteral("冰织"));
+    setWindowIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")));
+    setAttribute(Qt::WA_TranslucentBackground, true);
     setStyleSheet(QStringLiteral("#MainWindowPet { background:transparent; }"));
     setObjectName(QStringLiteral("MainWindowPet"));
 }
@@ -123,8 +205,11 @@ void MainWindow::wireAiSession()
                 if (requestId != pendingTtsRequestId_)
                     return;
                 configManager_->load();
-                voicePlayer_->playFile(filePath, configManager_->config().volume);
+                const AppConfig config = configManager_->config();
+                if (config.voiceEnabled)
+                    voicePlayer_->playFile(filePath, config.volume);
                 pendingTtsRequestId_ = 0;
+                pendingCourseReminder_ = false;
             });
     connect(ttsClient_, &TtsClient::synthesisFailed, this,
             [this](quint64 requestId, const QString &reason) {
@@ -133,9 +218,13 @@ void MainWindow::wireAiSession()
                 qWarning().noquote() << QStringLiteral("GPT-SoVITS 合成失败，回退原作语音：%1")
                                              .arg(reason);
                 configManager_->load();
-                voicePlayer_->playReply(pendingVoiceText_, pendingVoiceEmotion_,
-                                        configManager_->config());
+                if (pendingCourseReminder_)
+                    voicePlayer_->playCourseReminder(configManager_->config());
+                else
+                    voicePlayer_->playReply(pendingVoiceText_, pendingVoiceEmotion_,
+                                            configManager_->config());
                 pendingTtsRequestId_ = 0;
+                pendingCourseReminder_ = false;
             });
 
     connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) {
@@ -160,6 +249,7 @@ void MainWindow::wireAiSession()
         const AppConfig config = configManager_->config();
         pendingVoiceText_ = lastAssistantText_;
         pendingVoiceEmotion_ = emotion;
+        pendingCourseReminder_ = false;
 
         if (!config.voiceEnabled) {
             ttsClient_->cancel();
@@ -385,6 +475,10 @@ void MainWindow::endDrag()
 void MainWindow::showPetMenu(const QPoint &globalPos)
 {
     QMenu menu;
+    menu.addAction(QStringLiteral("隐藏冰织（最小化到任务栏）"),
+                   this, &MainWindow::minimizePetToTaskbar);
+    menu.addSeparator();
+    menu.addAction(QStringLiteral("打开日记与笔记"), this, &MainWindow::openRecordsWindow);
     menu.addAction(QStringLiteral("本次对话记录"), this, &MainWindow::showChatHistory);
     menu.addAction(QStringLiteral("打开专注模式"), this, &MainWindow::openFocusWindow);
     menu.addAction(QStringLiteral("选择背景视频"), this, &MainWindow::chooseBackgroundVideo);
@@ -410,13 +504,66 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
     menu.exec(globalPos);
 }
 
+void MainWindow::minimizePetToTaskbar()
+{
+    persistWindowPosition();
+    showMinimized();
+}
+
+void MainWindow::openRecordsWindow()
+{
+    if (!recordsWindow_)
+        recordsWindow_ = new RecordsWindow(journalRepository_.get(), noteRepository_.get(), this);
+    recordsWindow_->show();
+    recordsWindow_->raise();
+    recordsWindow_->activateWindow();
+}
+
 void MainWindow::openFocusWindow()
 {
-    if (!focusWindow_)
-        focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_, this);
+    if (!focusWindow_) {
+        focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_,
+                                       scheduleRepository_.get(), this);
+        connect(focusWindow_, &FocusWindow::recordsRequested,
+                this, &MainWindow::openRecordsWindow);
+    }
     focusWindow_->show();
     focusWindow_->raise();
     focusWindow_->activateWindow();
+}
+
+void MainWindow::handleCourseReminder(const CourseOccurrence &, int,
+                                      const QString &displayText, const QString &speechText)
+{
+    conversationLog_->addHyori(displayText);
+    setReplyMessage(displayText);
+    catalog_->setEmotion(QStringLiteral("concerned"));
+    if (focusWindow_)
+        focusWindow_->showCourseReminder(displayText);
+
+    configManager_->load();
+    const AppConfig config = configManager_->config();
+    if (!config.voiceEnabled) {
+        ttsClient_->cancel();
+        pendingTtsRequestId_ = 0;
+        pendingCourseReminder_ = false;
+        voicePlayer_->stop();
+        return;
+    }
+    ttsClient_->cancel();
+    voicePlayer_->stop();
+    pendingVoiceText_ = displayText;
+    pendingVoiceEmotion_ = QStringLiteral("concerned");
+    pendingCourseReminder_ = true;
+    if (ttsClient_->isConfigured(config)) {
+        AppConfig japaneseTtsConfig = config;
+        japaneseTtsConfig.ttsTextLanguage = QStringLiteral("ja");
+        pendingTtsRequestId_ = ttsClient_->synthesize(speechText, japaneseTtsConfig);
+    } else {
+        pendingTtsRequestId_ = 0;
+        voicePlayer_->playCourseReminder(config);
+        pendingCourseReminder_ = false;
+    }
 }
 
 void MainWindow::showChatHistory()

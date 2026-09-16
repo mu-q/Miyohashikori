@@ -1,4 +1,7 @@
-QT       += core gui network multimedia multimediawidgets
+QT       += core gui network multimedia multimediawidgets sql
+QT       += gui-private
+win32: QT += axcontainer
+win32: RC_FILE = Miyohashikori.rc
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -16,6 +19,13 @@ SOURCES += \
     core/ttsclient.cpp \
     core/voiceplayer.cpp \
     core/conversationlog.cpp \
+    core/data/databasemanager.cpp \
+    core/data/journalrepository.cpp \
+    core/data/noterepository.cpp \
+    core/data/schedulerepository.cpp \
+    core/data/todorepository.cpp \
+    core/schedule/courseremindercontroller.cpp \
+    core/schedule/spreadsheetscheduleimporter.cpp \
     core/pomodorocontroller.cpp \
     core/ai/chathistory.cpp \
     core/ai/emotionparser.cpp \
@@ -24,6 +34,9 @@ SOURCES += \
     ui/characterspriteview.cpp \
     ui/replybubble.cpp \
     ui/chatlogwindow.cpp \
+    ui/recordswindow.cpp \
+    ui/coursesidebar.cpp \
+    ui/schedulewindow.cpp \
     ui/focuswindow.cpp
 
 RESOURCES += \
@@ -38,6 +51,16 @@ HEADERS += \
     core/ttsclient.h \
     core/voiceplayer.h \
     core/conversationlog.h \
+    core/data/databasemanager.h \
+    core/data/dataresult.h \
+    core/data/models.h \
+    core/data/sqlhelpers.h \
+    core/data/journalrepository.h \
+    core/data/noterepository.h \
+    core/data/schedulerepository.h \
+    core/data/todorepository.h \
+    core/schedule/courseremindercontroller.h \
+    core/schedule/spreadsheetscheduleimporter.h \
     core/pomodorocontroller.h \
     core/ai/chathistory.h \
     core/ai/emotionparser.h \
@@ -47,6 +70,9 @@ HEADERS += \
     ui/characterspriteview.h \
     ui/replybubble.h \
     ui/chatlogwindow.h \
+    ui/recordswindow.h \
+    ui/coursesidebar.h \
+    ui/schedulewindow.h \
     ui/focuswindow.h
 
 # Default rules for deployment.

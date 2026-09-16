@@ -1,5 +1,8 @@
 ﻿#include "appconfig.h"
 
+#include "../apppaths.h"
+
+#include <QFileInfo>
 #include <QtGlobal>
 
 namespace {
@@ -31,6 +34,8 @@ AppConfig AppConfig::defaults()
     config.llmEndpoint = QStringLiteral("https://api.deepseek.com/chat/completions");
     config.llmModel = QStringLiteral("deepseek-chat");
     config.ttsEndpoint = QStringLiteral("http://127.0.0.1:9880/tts");
+    config.ttsReferenceAudioPath = AppPaths::defaultTtsReferenceAudioPath();
+    config.ttsReferenceText = QStringLiteral("そうですね。帰って温かいミルクティでも");
     config.ttsReferenceLanguage = QStringLiteral("ja");
     config.ttsTextLanguage = QStringLiteral("ja");
     config.ttsSpeedFactor = kDefaultTtsSpeedFactor;
@@ -61,8 +66,18 @@ AppConfig AppConfig::fromJson(const QJsonObject &obj)
     const QString ttsEndpoint = obj.value(QStringLiteral("ttsEndpoint")).toString().trimmed();
     if (!ttsEndpoint.isEmpty())
         config.ttsEndpoint = ttsEndpoint;
-    config.ttsReferenceAudioPath =
+    const QString configuredReferenceAudio =
         obj.value(QStringLiteral("ttsReferenceAudioPath")).toString().trimmed();
+    const QString packagedReferenceAudio = AppPaths::defaultTtsReferenceAudioPath();
+    if (!configuredReferenceAudio.isEmpty() && QFileInfo::exists(configuredReferenceAudio)) {
+        config.ttsReferenceAudioPath = configuredReferenceAudio;
+    } else if (QFileInfo::exists(packagedReferenceAudio)) {
+        // Keep a portable package working after it is moved or extracted to a new directory.
+        config.ttsReferenceAudioPath = packagedReferenceAudio;
+    } else if (!configuredReferenceAudio.isEmpty()) {
+        // Preserve an unavailable custom path so the configuration remains diagnosable.
+        config.ttsReferenceAudioPath = configuredReferenceAudio;
+    }
     config.ttsReferenceText =
         obj.value(QStringLiteral("ttsReferenceText")).toString().trimmed();
     const QString referenceLanguage =

@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QIcon>
 
 int main(int argc, char *argv[])
 {
@@ -11,6 +12,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     a.setApplicationName(QStringLiteral("Miyohashikori"));
     a.setOrganizationName(QStringLiteral("Miyohashikori"));
+    a.setWindowIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")));
 
     MainWindow w;
     w.show();
