@@ -16,6 +16,7 @@ tests/target_wrapper.sh
 # Qt / qmake generated files and build outputs
 /build*/
 /out/
+/dist/
 **/.qmake.stash
 **/Makefile
 **/Makefile.*

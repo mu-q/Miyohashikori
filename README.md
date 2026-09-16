@@ -4,6 +4,17 @@
 
 > 本项目为非官方同人作品；角色及原作相关权利归原权利人所有。
 
+## 免安装版快速开始
+
+发布者提供的完整 ZIP 已包含程序、Qt 运行库、SQLite 驱动、立绘和本地语音库。使用者无需安装 Qt：
+
+1. 将 ZIP **完整解压**到普通目录，不要直接在压缩软件中运行。
+2. 双击 `Miyohashikori.exe`。
+3. 首次运行会在 `%USERPROFILE%\.hyori` 创建配置和数据库。退出程序后打开其中的 `config.json`，填写自己的 `llmApiKey`，再重新启动。
+4. Windows SmartScreen 若提示未知发布者，请核对发布页给出的 SHA-256；未购买代码签名证书的个人构建通常会出现该提示。
+
+用户的配置、日记、笔记、课表和缓存位于 `%USERPROFILE%\.hyori`，不会写进程序目录。因此升级时可以解压到新目录直接运行，原有数据会继续使用。不要把自己的 `.hyori` 目录、API Key 或数据库打进发布包。
+
 ## 当前功能
 
 - 透明、无边框、置顶的桌宠窗口，并保留 Windows 任务栏入口
@@ -47,16 +58,38 @@ qmake Miyohashikori.pro
 mingw32-make
 ```
 
-发布 Windows Release 构建时，可使用脚本收集 Qt 运行库并显式校验 SQLite 驱动：
+## 制作 Windows 免安装版
+
+先构建 Release：
+
+```powershell
+qmake CONFIG+=release Miyohashikori.pro
+mingw32-make -j4
+```
+
+再运行发布脚本。下面的“完整包”会收集 Qt/MinGW 运行库、QSQLITE、立绘、图标和整个本地语音库，并生成 ZIP：
 
 ```powershell
 .\scripts\deploy_windows.ps1 `
-  -Executable .\path\to\release\Miyohashikori.exe `
-  -Destination .\dist `
-  -QtBin D:\path\to\Qt\6.5.3\mingw_64\bin
+  -Executable .\release\Miyohashikori.exe `
+  -Destination .\dist\Miyohashikori-portable-2026.09.16 `
+  -QtBin D:\path\to\Qt\6.5.3\mingw_64\bin `
+  -CompilerBin D:\path\to\Qt\Tools\mingw1120_64\bin `
+  -Version 2026.09.16 `
+  -IncludeVoiceLibrary `
+  -CreateZip
 ```
 
-构建产物通常位于构建目录下。运行程序时应保留项目的 `assets/` 与 `resources/voice/` 目录；开发运行时程序会自动向上查找这些资源。
+若只想制作体积较小的测试包，可去掉 `-IncludeVoiceLibrary`；但该包不包含本地语音播放和 TTS 失败后的语音回退，不建议作为“完整功能版”发布。也可去掉 `-CreateZip`，只生成待检查的目录。
+
+脚本要求目标目录不存在或为空，以免旧 DLL 混入；结束前会检查关键 Qt DLL、`platforms/qwindows.dll`、`sqldrivers/qsqlite.dll`、立绘及可选语音资源，并生成 `release-manifest.txt`（含版本、文件数、大小和 EXE SHA-256）。发布前建议：
+
+1. 在未安装 Qt 的 Windows 10/11 64 位电脑或 Windows Sandbox 中完整解压并启动。
+2. 验证桌宠和主窗口同时出现，并检查对话、语音、课程导入、课前提醒、日记/笔记以及重启后的数据持久化。
+3. 确认发布目录中没有 `config.json`、`hyori.db`、API Key、缓存或个人课程文件。
+4. 在发布页同时提供版本号、ZIP 的 SHA-256、系统要求和已知问题。
+
+本地语音库、立绘、角色素材以及 GPT-SoVITS 模型可能受各自许可或原权利人条款约束；公开分发前请确认你拥有相应发布权限。
 
 ## 配置
 
@@ -69,7 +102,7 @@ mingw32-make
   "llmModel": "deepseek-chat",
   "ttsEnabled": true,
   "ttsEndpoint": "http://127.0.0.1:9880/tts",
-  "ttsReferenceAudioPath": "D:/个人/GitHub/Miyohashikori/resources/voice/ko/ko0007.ogg",
+  "ttsReferenceAudioPath": "C:/path/to/Miyohashikori/resources/voice/ko/ko0007.ogg",
   "ttsReferenceText": "そうですね。帰って温かいミルクティでも",
   "ttsReferenceLanguage": "ja",
   "ttsTextLanguage": "ja",
@@ -85,7 +118,7 @@ mingw32-make
 - `llmModel`：模型名称。
 - `ttsEnabled`：是否优先使用 GPT-SoVITS 合成语音。
 - `ttsEndpoint`：GPT-SoVITS v2 API 的 `/tts` 地址。
-- `ttsReferenceAudioPath`：参考音频的本机绝对路径。
+- `ttsReferenceAudioPath`：参考音频的本机绝对路径。完整免安装版首次运行会自动填写随包参考音频的实际路径，通常无需手工修改。
 - `ttsReferenceText`：参考音频的准确台词，必须与音频内容一致。
 - `ttsReferenceLanguage`、`ttsTextLanguage`：参考音频与待合成文本的语言代码；当前桌宠显示中文，但会把同一回复的隐藏日语译文交给 TTS。
 - `ttsSpeedFactor`：合成语速，推荐从 `1.0` 开始调整。
@@ -97,12 +130,12 @@ mingw32-make
 
 ## 启动 GPT-SoVITS TTS
 
-仓库中的启动脚本已固定使用以下训练结果：
+GPT-SoVITS、推理环境和模型体积较大，且许可各异，**不会被免安装发布脚本打进 ZIP**；不安装它也能使用随包本地语音。需要实时合成时，请另行准备兼容的 GPT-SoVITS v2Pro 整合包和以下训练结果：
 
 - SoVITS：`hyori_v2pro_e8_s1008.pth`
 - GPT：`hyori_v2pro-e10.ckpt`
 
-先关闭训练 WebUI 和推理 WebUI，再在项目根目录运行：
+先关闭训练 WebUI 和推理 WebUI，再在项目根目录运行（免安装版使用 `tools\start_hyori_tts.ps1`）：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start_hyori_tts.ps1
