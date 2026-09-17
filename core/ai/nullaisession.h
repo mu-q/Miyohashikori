@@ -10,4 +10,7 @@ public:
     explicit NullAiSession(QObject *parent = nullptr);
 
     void submit(const QString &userText) override;
+
+private:
+    int pendingCount_ = 0;
 };

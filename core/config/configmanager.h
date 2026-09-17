@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QString>
 
 #include "appconfig.h"
 
@@ -10,6 +11,7 @@ class ConfigManager : public QObject
 
 public:
     explicit ConfigManager(QObject *parent = nullptr);
+    explicit ConfigManager(const QString &configFilePath, QObject *parent = nullptr);
 
     bool load();
     bool save() const;
@@ -19,6 +21,8 @@ public:
 
 private:
     bool ensureDataDirectory() const;
+    bool backupInvalidConfig() const;
 
     AppConfig config_;
+    QString configFilePath_;
 };

@@ -9,12 +9,15 @@ NullAiSession::NullAiSession(QObject *parent)
 
 void NullAiSession::submit(const QString &userText)
 {
-    Q_UNUSED(userText);
+    if (pendingCount_++ == 0)
+        emit busyChanged(true);
     QTimer::singleShot(200, this, [this, userText] {
         const QString message =
             QStringLiteral("（原型占位）已收到：%1\n后端未连接，后续在此接入 LLM / TTS。").arg(userText);
         emit assistantMessage(message);
         emit assistantSpeech(QStringLiteral("受け取りました。"));
         emit assistantEmotion(QStringLiteral("默认"));
+        if (--pendingCount_ == 0)
+            emit busyChanged(false);
     });
 }

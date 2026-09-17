@@ -19,4 +19,5 @@ signals:
     void assistantEmotion(const QString &token);
     void sessionStatus(const QString &message);
     void sessionError(const QString &message);
+    void busyChanged(bool busy);
 };

@@ -231,7 +231,6 @@ void MainWindow::wireAiSession()
         lastAssistantText_ = text;
         conversationLog_->addHyori(text);
         setReplyMessage(text);
-        setInputWaiting(false);
     });
     connect(ai_, &IAiSession::assistantSpeech, this, [this](const QString &text) {
         lastAssistantSpeechText_ = text.trimmed();
@@ -241,8 +240,8 @@ void MainWindow::wireAiSession()
     });
     connect(ai_, &IAiSession::sessionError, this, [this](const QString &error) {
         setReplyError(error);
-        setInputWaiting(false);
     });
+    connect(ai_, &IAiSession::busyChanged, this, &MainWindow::setInputWaiting);
     connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
     connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &emotion) {
         configManager_->load();

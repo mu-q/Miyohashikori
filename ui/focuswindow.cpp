@@ -236,9 +236,10 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
         if (ai_) ai_->submit(workFinished ? QStringLiteral("我刚完成了一轮番茄钟，请用一句话温柔地提醒我休息。") : QStringLiteral("我的休息时间结束了，请用一句话陪我开始专注。"));
     });
     if (ai_) {
-        connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) { setDialogue(text); input_->setEnabled(true); });
+        connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) { setDialogue(text); });
         connect(ai_, &IAiSession::sessionStatus, this, [this](const QString &text) { setDialogue(text); });
-        connect(ai_, &IAiSession::sessionError, this, [this](const QString &text) { setDialogue(text, true); input_->setEnabled(true); });
+        connect(ai_, &IAiSession::sessionError, this, [this](const QString &text) { setDialogue(text, true); });
+        connect(ai_, &IAiSession::busyChanged, this, [this](bool busy) { input_->setEnabled(!busy); });
     }
     auto *dateTimeTimer = new QTimer(this);
     dateTimeTimer->setInterval(1000);
