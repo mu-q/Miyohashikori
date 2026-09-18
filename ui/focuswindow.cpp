@@ -9,6 +9,7 @@
 
 #include <QApplication>
 #include <QCloseEvent>
+#include <QCursor>
 #include <QDateTime>
 #include <QFrame>
 #include <QGuiApplication>
@@ -23,6 +24,7 @@
 #include <QResizeEvent>
 #include <QScreen>
 #include <QShowEvent>
+#include <QSizePolicy>
 #include <QSpinBox>
 #include <QStackedLayout>
 #include <QStyle>
@@ -46,7 +48,7 @@ QString focusStyle()
         QLabel#eyebrow { color: #b9cbed; font-size: 12px; font-weight: 600; letter-spacing: 2px; }
         QLabel#headerDate { color: #9eacd0; font-size: 12px; }
         QLabel#headerTime { color: #edf4ff; font-size: 30px; font-weight: 300; letter-spacing: 2px; }
-        QLabel#timer { color: #f7f9ff; font-size: 54px; font-weight: 300; letter-spacing: 2px; }
+        QLabel#timer { color: #f7f9ff; font-size: 48px; font-weight: 300; letter-spacing: 2px; }
         QLabel#cycles { color: #aab7d5; font-size: 12px; }
         QLabel#sceneHint { color: #9cabca; font-size: 12px; }
         QFrame#scene { background: rgba(15, 21, 37, 118); border: 1px solid rgba(191, 212, 242, 46); border-radius: 24px; }
@@ -63,9 +65,15 @@ QString focusStyle()
         QPushButton, QToolButton { background: rgba(47, 57, 82, 218); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 82); border-radius: 10px; padding: 8px 14px; min-width: 58px; }
         QPushButton:hover, QToolButton:hover { background: rgba(92, 81, 131, 225); border-color: #cbbcf0; }
         QPushButton:pressed, QToolButton:pressed { background: rgba(39, 45, 66, 240); }
-        QToolButton#timerControl { min-width: 58px; border-radius: 18px; background: #bcd8f5; color: #1b243a; font-weight: 700; }
+        QToolButton#timerControl, QToolButton#timerSkip {
+            min-width: 0; max-width: 72px; min-height: 34px; max-height: 34px;
+            padding: 0; border-radius: 17px;
+        }
+        QToolButton#timerControl { background: #bcd8f5; color: #1b243a; font-weight: 700; }
+        QToolButton#timerSkip { background: rgba(47, 57, 82, 205); color: #dbe8fa; }
         QSpinBox { background: rgba(15, 20, 35, 220); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 80); border-radius: 7px; padding: 5px; min-width: 42px; }
         QComboBox, QDateEdit, QTimeEdit { background: rgba(15, 20, 35, 220); color: #edf4ff; border: 1px solid rgba(191, 212, 242, 80); border-radius: 8px; padding: 6px 8px; }
+        QComboBox::drop-down { background: transparent; border: none; width: 24px; }
         QComboBox QAbstractItemView { background: #202941; color: #edf4ff; selection-background-color: #625680; }
         QListWidget#courseList { background: transparent; color: #eef3fc; border: none; outline: none; }
         QPushButton#viewSchedule { color: #dceaff; padding-left: 10px; padding-right: 10px; }
@@ -83,7 +91,9 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
       trayIcon_(new QSystemTrayIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")), this))
 {
     setObjectName(QStringLiteral("FocusWindow"));
-    setWindowFlag(Qt::Window, true);
+    setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint
+                   | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint
+                   | Qt::WindowCloseButtonHint);
     setWindowTitle(QStringLiteral("冰织 · 陪伴与专注"));
     setWindowIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")));
     resize(1280, 780);
@@ -93,11 +103,7 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
         auto *trayMenu = new QMenu(this);
         trayMenu->addAction(QStringLiteral("显示桌宠"), this, [this] {
-            if (QWidget *pet = parentWidget()) {
-                pet->showNormal();
-                pet->raise();
-                pet->activateWindow();
-            }
+            emit petRequested();
         });
         trayMenu->addAction(QStringLiteral("打开专注模式"), this, [this] {
             showNormal();
@@ -162,7 +168,7 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     settings->setToolTip(QStringLiteral("设置专注与休息时长"));
     auto *history = new QToolButton;
     history->setText(QStringLiteral("记录"));
-    history->setToolTip(QStringLiteral("查看本次对话记录"));
+    history->setToolTip(QStringLiteral("查看对话记录"));
     auto *records = new QToolButton;
     records->setText(QStringLiteral("手账"));
     records->setToolTip(QStringLiteral("打开日记与笔记"));
@@ -201,42 +207,53 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     auto *sceneLayout = new QHBoxLayout(scene);
     sceneLayout->setContentsMargins(24, 10, 34, 10);
     sceneLayout->setSpacing(18);
-    auto *character = new QLabel;
-    character->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
-    character->setPixmap(QPixmap(QStringLiteral(":/assets/modes/default/neutral.png"))
-                             .scaled(300, 410, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    character->setMinimumWidth(320);
+    characterLabel_ = new QLabel;
+    characterLabel_->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
+    characterLabel_->setMinimumSize(150, 180);
+    characterLabel_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    characterSource_ = QPixmap(QStringLiteral(":/assets/modes/default/neutral.png"));
     auto *characterColumn = new QVBoxLayout;
     characterColumn->addStretch();
-    characterColumn->addWidget(character, 1, Qt::AlignHCenter | Qt::AlignBottom);
+    characterColumn->addWidget(characterLabel_, 1);
     auto *sceneHint = new QLabel(QStringLiteral("今天也一起，按自己的节奏向前。"));
     sceneHint->setObjectName(QStringLiteral("sceneHint"));
     sceneHint->setAlignment(Qt::AlignCenter);
     characterColumn->addWidget(sceneHint);
     sceneLayout->addLayout(characterColumn, 1);
 
-    auto *clock = new QFrame;
+    auto *timerPanel = new QWidget;
+    auto *timerColumn = new QVBoxLayout(timerPanel);
+    timerColumn->setContentsMargins(0, 0, 0, 0);
+    timerColumn->setSpacing(10);
+    auto *clock = new QFrame(timerPanel);
     clock->setObjectName(QStringLiteral("timerRing"));
     clock->setFixedSize(232, 232);
     auto *clockLayout = new QVBoxLayout(clock);
-    clockLayout->setContentsMargins(24, 28, 24, 24);
-    clockLayout->setSpacing(4);
+    clockLayout->setContentsMargins(24, 32, 24, 32);
+    clockLayout->setSpacing(8);
     phaseLabel_ = new QLabel; phaseLabel_->setObjectName(QStringLiteral("eyebrow")); phaseLabel_->setAlignment(Qt::AlignCenter);
     timerLabel_ = new QLabel; timerLabel_->setObjectName(QStringLiteral("timer")); timerLabel_->setAlignment(Qt::AlignCenter);
-    clockLayout->addWidget(phaseLabel_); clockLayout->addWidget(timerLabel_);
+    clockLayout->addStretch();
+    clockLayout->addWidget(phaseLabel_);
+    clockLayout->addWidget(timerLabel_);
+    clockLayout->addStretch();
+    timerColumn->addWidget(clock, 0, Qt::AlignHCenter);
     auto *controls = new QHBoxLayout;
     controls->setSpacing(8);
     controls->addStretch();
     playButton_ = new QToolButton;
     playButton_->setObjectName(QStringLiteral("timerControl"));
+    playButton_->setFixedSize(72, 34);
     auto *skip = new QToolButton;
+    skip->setObjectName(QStringLiteral("timerSkip"));
+    skip->setFixedSize(72, 34);
     skip->setText(QStringLiteral("跳过"));
     skip->setToolTip(QStringLiteral("进入下一个阶段"));
     controls->addWidget(playButton_);
     controls->addWidget(skip);
     controls->addStretch();
-    clockLayout->addLayout(controls);
-    sceneLayout->addWidget(clock, 0, Qt::AlignCenter);
+    timerColumn->addLayout(controls);
+    sceneLayout->addWidget(timerPanel, 0, Qt::AlignCenter);
     mainColumn->addWidget(scene, 1);
 
     auto *dialogue = new QFrame; dialogue->setObjectName(QStringLiteral("dialogue"));
@@ -302,29 +319,47 @@ void FocusWindow::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     if (videoWidget_) videoWidget_->setGeometry(background_->rect());
+    updateCharacterPixmap();
 }
 
 void FocusWindow::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
+    updateCharacterPixmap();
     if (initialPlacementApplied_)
         return;
 
-    QScreen *screen = parentWidget()
-        ? QGuiApplication::screenAt(parentWidget()->frameGeometry().center())
-        : QGuiApplication::primaryScreen();
+    QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
     if (!screen)
         return;
     const QRect available = screen->availableGeometry();
     resize(qMin(1280, available.width() - 48), qMin(780, available.height() - 48));
     move(available.center() - rect().center());
     initialPlacementApplied_ = true;
+    updateCharacterPixmap();
 }
 
 void FocusWindow::closeEvent(QCloseEvent *event)
 {
     pomodoro_->pause();
     QWidget::closeEvent(event);
+}
+
+void FocusWindow::updateCharacterPixmap()
+{
+    if (!characterLabel_ || characterSource_.isNull())
+        return;
+
+    const QSize available = characterLabel_->contentsRect().size();
+    if (available.width() <= 0 || available.height() <= 0)
+        return;
+
+    const QSize target(qMax(1, qRound(available.width() * 0.82)),
+                       qMax(1, qRound(available.height() * 0.92)));
+    characterLabel_->setPixmap(characterSource_.scaled(
+        target, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
 void FocusWindow::updateTimer(int seconds)

@@ -231,7 +231,8 @@ CourseSidebar::CourseSidebar(ScheduleRepository *repository, QWidget *parent)
     auto *title = new QLabel(QStringLiteral("课程表"), this);
     title->setObjectName(QStringLiteral("sidebarTitle"));
     semesterMenuButton_ = new QToolButton(this);
-    semesterMenuButton_->setText(QStringLiteral("学期 ···"));
+    semesterMenuButton_->setText(QStringLiteral("管理学期"));
+    semesterMenuButton_->setToolTip(QStringLiteral("新建、编辑或删除学期"));
     semesterMenuButton_->setPopupMode(QToolButton::InstantPopup);
     auto *semesterMenu = new QMenu(semesterMenuButton_);
     semesterMenu->addAction(QStringLiteral("新建学期"), this, &CourseSidebar::addSemester);
@@ -353,13 +354,11 @@ void CourseSidebar::refreshCourses()
         if (course.weekday != weekday
             || !CourseReminderController::occursInWeek(course, currentWeek)) continue;
         visibleCourses_.append(course);
-        const QString detail = QStringLiteral("%1–%2  %3\n%4%5 · 第 %6–%7 周 %8")
+        QString detail = QStringLiteral("%1–%2  %3\n%4%5 · 第 %6–%7 周 %8")
             .arg(course.startTime.toString(QStringLiteral("HH:mm")), course.endTime.toString(QStringLiteral("HH:mm")), course.name,
                  course.room.isEmpty() ? QStringLiteral("地点待定") : course.room,
                  course.teacher.isEmpty() ? QString() : QStringLiteral(" · %1").arg(course.teacher))
             .arg(course.startWeek).arg(course.endWeek).arg(patternText(course.weekPattern));
-        auto *item = new QListWidgetItem(detail, courseList_);
-        item->setData(Qt::UserRole, course.id);
         CourseItemState state = CourseItemState::Default;
         if (showingToday && CourseReminderController::occursInWeek(course, currentWeek)) {
             if (course.endTime <= now)
@@ -369,6 +368,10 @@ void CourseSidebar::refreshCourses()
             else
                 state = CourseItemState::Later;
         }
+        if (state == CourseItemState::Finished)
+            detail.prepend(QStringLiteral("已结束 · "));
+        auto *item = new QListWidgetItem(detail, courseList_);
+        item->setData(Qt::UserRole, course.id);
         item->setData(kCourseStateRole, static_cast<int>(state));
         if (state == CourseItemState::Finished)
             item->setToolTip(QStringLiteral("今天已结束"));

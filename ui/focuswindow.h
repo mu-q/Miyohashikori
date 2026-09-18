@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QPixmap>
 #include <QWidget>
 
 class ConfigManager;
@@ -30,6 +31,7 @@ public:
     void showCourseReminder(const QString &text);
 
 signals:
+    void petRequested();
     void recordsRequested();
     void todosRequested();
     void settingsRequested();
@@ -50,6 +52,7 @@ private:
     void showNotification(const QString &title, const QString &body);
     void useFallbackBackground();
     void updateDateTime();
+    void updateCharacterPixmap();
 
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
@@ -65,6 +68,7 @@ private:
     QLabel *dateLabel_ = nullptr;
     QLabel *timeLabel_ = nullptr;
     QLabel *dialogueText_ = nullptr;
+    QLabel *characterLabel_ = nullptr;
     QLineEdit *input_ = nullptr;
     QToolButton *playButton_ = nullptr;
     QFrame *durationPanel_ = nullptr;
@@ -73,5 +77,6 @@ private:
     QSpinBox *longSpin_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
     CourseSidebar *courseSidebar_ = nullptr;
+    QPixmap characterSource_;
     bool initialPlacementApplied_ = false;
 };

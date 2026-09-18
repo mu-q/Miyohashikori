@@ -181,7 +181,10 @@ MainWindow::MainWindow(QWidget *parent)
     QTimer::singleShot(120, this, &MainWindow::openFocusWindow);
 }
 
-MainWindow::~MainWindow() = default;
+MainWindow::~MainWindow()
+{
+    delete focusWindow_;
+}
 
 // 无边框、透明背景、始终置顶，同时保留标准任务栏入口。
 void MainWindow::applyWindowChrome()
@@ -545,7 +548,12 @@ void MainWindow::openFocusWindow()
 {
     if (!focusWindow_) {
         focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_,
-                                       scheduleRepository_.get(), this);
+                                       scheduleRepository_.get());
+        connect(focusWindow_, &FocusWindow::petRequested, this, [this] {
+            showNormal();
+            raise();
+            activateWindow();
+        });
         connect(focusWindow_, &FocusWindow::recordsRequested,
                 this, &MainWindow::openRecordsWindow);
         connect(focusWindow_, &FocusWindow::todosRequested,
@@ -553,7 +561,10 @@ void MainWindow::openFocusWindow()
         connect(focusWindow_, &FocusWindow::settingsRequested,
                 this, &MainWindow::openSettings);
     }
-    focusWindow_->show();
+    if (focusWindow_->isMinimized())
+        focusWindow_->showNormal();
+    else
+        focusWindow_->show();
     focusWindow_->raise();
     focusWindow_->activateWindow();
 }
