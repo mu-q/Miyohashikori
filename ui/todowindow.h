@@ -1,10 +1,12 @@
 #pragma once
 
 #include <QWidget>
+#include <QString>
 
 class TodoRepository;
 class QCheckBox;
 class QCloseEvent;
+class QEvent;
 class QComboBox;
 class QDateTimeEdit;
 class QLabel;
@@ -20,9 +22,15 @@ class TodoWindow : public QWidget
 
 public:
     explicit TodoWindow(TodoRepository *repository, QWidget *parent = nullptr);
+    void present();
+    bool requestClose();
+
+signals:
+    void dismissed();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void reload(qint64 selectId = -1);
@@ -33,6 +41,7 @@ private:
     bool confirmDiscard();
     void setStatus(const QString &message, bool error = false);
     void markDirty();
+    void applyTheme();
 
     TodoRepository *repository_ = nullptr;
     qint64 currentId_ = -1;
@@ -46,5 +55,7 @@ private:
     QCheckBox *dueEnabled_ = nullptr;
     QDateTimeEdit *dueEdit_ = nullptr;
     QLabel *messageLabel_ = nullptr;
+    QLabel *summaryLabel_ = nullptr;
     QPushButton *deleteButton_ = nullptr;
+    QString nightStyle_;
 };

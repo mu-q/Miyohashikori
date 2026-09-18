@@ -15,6 +15,7 @@ class ScheduleWindow : public QWidget
     Q_OBJECT
 public:
     explicit ScheduleWindow(ScheduleRepository *repository, QWidget *parent = nullptr);
+    void applyTheme();
 
 public slots:
     void refresh();

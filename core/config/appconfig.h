@@ -20,6 +20,7 @@ struct AppConfig
     bool voiceEnabled = true;
     double volume = 0.8;
     QString backgroundVideoPath;
+    QString theme = QStringLiteral("system");
     int pomodoroWorkMinutes = 25;
     int pomodoroShortBreakMinutes = 5;
     int pomodoroLongBreakMinutes = 15;

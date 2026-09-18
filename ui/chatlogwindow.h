@@ -14,5 +14,7 @@ public:
 
 private:
     void appendEntry(const ConversationLog::Entry &entry);
+    void applyTheme();
+    ConversationLog *log_ = nullptr;
     QTextBrowser *browser_ = nullptr;
 };

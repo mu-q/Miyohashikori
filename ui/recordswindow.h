@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QString>
 
 class JournalRepository;
 class NoteRepository;
@@ -44,6 +45,7 @@ private:
     void setEditingEnabled(bool enabled);
     void setStatus(const QString &message, bool error = false);
     void markDirty();
+    void applyTheme();
 
     JournalRepository *journalRepository_ = nullptr;
     NoteRepository *noteRepository_ = nullptr;
@@ -68,4 +70,5 @@ private:
     QLabel *statusLabel_ = nullptr;
     QPushButton *deleteButton_ = nullptr;
     QPushButton *saveButton_ = nullptr;
+    QString nightStyle_;
 };

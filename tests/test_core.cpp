@@ -71,9 +71,32 @@ private slots:
     void skippingWorkDoesNotCountAsCompletion();
     void naturalCompletionCountsAndNotifies();
     void malformedConfigIsBackedUpBeforeReset();
+    void themePreferenceRoundTrips();
     void aiRequestsAreProcessedSerially();
     void conversationHistoryPersistsAndCanBeCleared();
 };
+
+void CoreTests::themePreferenceRoundTrips()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    ConfigManager manager(directory.filePath(QStringLiteral("config.json")));
+    QVERIFY(manager.load());
+    QCOMPARE(manager.config().theme, QStringLiteral("system"));
+
+    AppConfig config = manager.config();
+    config.theme = QStringLiteral("mist");
+    manager.setConfig(config);
+    QVERIFY(manager.save());
+
+    ConfigManager reloaded(directory.filePath(QStringLiteral("config.json")));
+    QVERIFY(reloaded.load());
+    QCOMPARE(reloaded.config().theme, QStringLiteral("mist"));
+
+    QJsonObject invalidTheme = reloaded.config().toJson();
+    invalidTheme.insert(QStringLiteral("theme"), QStringLiteral("unknown"));
+    QCOMPARE(AppConfig::fromJson(invalidTheme).theme, QStringLiteral("system"));
+}
 
 void CoreTests::durationChangesResetPausedPhase()
 {

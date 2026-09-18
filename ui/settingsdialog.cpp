@@ -2,8 +2,10 @@
 
 #include "../core/config/appconfig.h"
 #include "../core/config/configmanager.h"
+#include "../core/theme.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
@@ -41,6 +43,17 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent)
     auto *hint = new QLabel(QStringLiteral("API Key 只保存在本机 ~/.hyori/config.json。"), this);
     hint->setWordWrap(true);
     root->addWidget(hint);
+
+    auto *appearanceGroup = new QGroupBox(QStringLiteral("外观"), this);
+    auto *appearanceForm = new QFormLayout(appearanceGroup);
+    themeBox_ = new QComboBox(appearanceGroup);
+    themeBox_->addItem(QStringLiteral("跟随系统"), QStringLiteral("system"));
+    themeBox_->addItem(QStringLiteral("冰织夜色"), QStringLiteral("night"));
+    themeBox_->addItem(QStringLiteral("晨雾浅色"), QStringLiteral("mist"));
+    const int themeIndex = themeBox_->findData(ThemeManager::normalizedId(config.theme));
+    themeBox_->setCurrentIndex(themeIndex < 0 ? 0 : themeIndex);
+    appearanceForm->addRow(QStringLiteral("窗口主题"), themeBox_);
+    root->addWidget(appearanceGroup);
 
     auto *llmGroup = new QGroupBox(QStringLiteral("AI 对话"), this);
     auto *llmForm = new QFormLayout(llmGroup);
@@ -145,11 +158,13 @@ void SettingsDialog::saveSettings()
     config.ttsReferenceAudioPath = ttsReferenceAudio_->text().trimmed();
     config.ttsReferenceText = ttsReferenceText_->text().trimmed();
     config.ttsSpeedFactor = ttsSpeed_->value();
+    config.theme = themeBox_->currentData().toString();
     configManager_->setConfig(config);
     if (!configManager_->save()) {
         QMessageBox::critical(this, QStringLiteral("保存失败"),
                               QStringLiteral("无法写入本地配置文件，请检查目录权限。"));
         return;
     }
+    ThemeManager::instance()->apply(config.theme);
     accept();
 }

@@ -15,6 +15,7 @@ SOURCES += \
     core/apppaths.cpp \
     core/config/appconfig.cpp \
     core/config/configmanager.cpp \
+    core/theme.cpp \
     core/spritecatalog.cpp \
     core/ttsclient.cpp \
     core/voiceplayer.cpp \
@@ -49,6 +50,7 @@ HEADERS += \
     core/apppaths.h \
     core/config/appconfig.h \
     core/config/configmanager.h \
+    core/theme.h \
     core/spritecatalog.h \
     core/ttsclient.h \
     core/voiceplayer.h \

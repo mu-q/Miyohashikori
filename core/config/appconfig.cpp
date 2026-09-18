@@ -94,6 +94,10 @@ AppConfig AppConfig::fromJson(const QJsonObject &obj)
     config.voiceEnabled = obj.value(QStringLiteral("voiceEnabled")).toBool(config.voiceEnabled);
     config.volume = qBound(0.0, obj.value(QStringLiteral("volume")).toDouble(config.volume), 1.0);
     config.backgroundVideoPath = obj.value(QStringLiteral("backgroundVideoPath")).toString().trimmed();
+    const QString theme = obj.value(QStringLiteral("theme")).toString().trimmed().toLower();
+    if (theme == QStringLiteral("night") || theme == QStringLiteral("mist")
+        || theme == QStringLiteral("system"))
+        config.theme = theme;
     config.pomodoroWorkMinutes = qBound(1, obj.value(QStringLiteral("pomodoroWorkMinutes")).toInt(config.pomodoroWorkMinutes), 180);
     config.pomodoroShortBreakMinutes = qBound(1, obj.value(QStringLiteral("pomodoroShortBreakMinutes")).toInt(config.pomodoroShortBreakMinutes), 60);
     config.pomodoroLongBreakMinutes = qBound(1, obj.value(QStringLiteral("pomodoroLongBreakMinutes")).toInt(config.pomodoroLongBreakMinutes), 120);
@@ -129,6 +133,7 @@ QJsonObject AppConfig::toJson() const
     obj.insert(QStringLiteral("voiceEnabled"), voiceEnabled);
     obj.insert(QStringLiteral("volume"), qBound(0.0, volume, 1.0));
     obj.insert(QStringLiteral("backgroundVideoPath"), backgroundVideoPath);
+    obj.insert(QStringLiteral("theme"), theme);
     obj.insert(QStringLiteral("pomodoroWorkMinutes"), qBound(1, pomodoroWorkMinutes, 180));
     obj.insert(QStringLiteral("pomodoroShortBreakMinutes"), qBound(1, pomodoroShortBreakMinutes, 60));
     obj.insert(QStringLiteral("pomodoroLongBreakMinutes"), qBound(1, pomodoroLongBreakMinutes, 120));

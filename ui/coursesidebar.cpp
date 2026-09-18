@@ -4,6 +4,7 @@
 #include "../core/data/schedulerepository.h"
 #include "../core/schedule/courseremindercontroller.h"
 #include "../core/schedule/spreadsheetscheduleimporter.h"
+#include "../core/theme.h"
 
 #include <QComboBox>
 #include <QDateEdit>
@@ -50,21 +51,22 @@ public:
     {
         const CourseItemState state = static_cast<CourseItemState>(
             index.data(kCourseStateRole).toInt());
-        QColor background(40, 46, 55, 190);
-        QColor border(222, 209, 188, 45);
-        QColor foreground(238, 240, 241);
+        const bool light = ThemeManager::instance()->isLight();
+        QColor background = light ? QColor(255, 255, 255, 150) : QColor(40, 46, 55, 190);
+        QColor border = light ? QColor(89, 113, 151, 48) : QColor(222, 209, 188, 45);
+        QColor foreground = light ? QColor(37, 53, 82) : QColor(238, 240, 241);
         if (state == CourseItemState::Finished) {
-            background = QColor(40, 45, 52, 205);
-            border = QColor(77, 86, 97, 155);
-            foreground = QColor(151, 158, 166);
+            background = light ? QColor(225, 231, 240, 190) : QColor(40, 45, 52, 205);
+            border = light ? QColor(159, 171, 190, 140) : QColor(77, 86, 97, 155);
+            foreground = light ? QColor(112, 124, 143) : QColor(151, 158, 166);
         } else if (state == CourseItemState::Next) {
-            background = QColor(91, 73, 55, 230);
-            border = QColor(223, 200, 167, 235);
-            foreground = QColor(255, 248, 237);
+            background = light ? QColor(255, 226, 194, 225) : QColor(91, 73, 55, 230);
+            border = light ? QColor(205, 140, 80, 220) : QColor(223, 200, 167, 235);
+            foreground = light ? QColor(92, 55, 29) : QColor(255, 248, 237);
         } else if (state == CourseItemState::Later) {
-            background = QColor(37, 62, 68, 220);
-            border = QColor(82, 119, 128, 205);
-            foreground = QColor(232, 243, 243);
+            background = light ? QColor(209, 238, 239, 220) : QColor(37, 62, 68, 220);
+            border = light ? QColor(80, 148, 151, 190) : QColor(82, 119, 128, 205);
+            foreground = light ? QColor(38, 89, 92) : QColor(232, 243, 243);
         }
         if (option.state.testFlag(QStyle::State_Selected)) {
             background = background.lighter(122);
@@ -300,6 +302,8 @@ CourseSidebar::CourseSidebar(ScheduleRepository *repository, QWidget *parent)
     clock->setInterval(60000);
     connect(clock, &QTimer::timeout, this, &CourseSidebar::refreshCourses);
     clock->start();
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            courseList_->viewport(), qOverload<>(&QWidget::update));
     refresh();
 }
 

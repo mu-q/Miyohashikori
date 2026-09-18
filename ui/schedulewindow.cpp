@@ -2,6 +2,7 @@
 
 #include "../core/data/schedulerepository.h"
 #include "../core/schedule/courseremindercontroller.h"
+#include "../core/theme.h"
 
 #include <QDate>
 #include <QHBoxLayout>
@@ -83,7 +84,7 @@ QVector<PositionedCourse> positionCourses(QVector<Course> courses)
 
 QString scheduleStyle()
 {
-    return QStringLiteral(R"(
+    QString style = QStringLiteral(R"(
         QWidget#ScheduleWindow { background: #171b21; color: #eef1f2; }
         QLabel#scheduleTitle { color: #f6f1e9; font-size: 24px; font-weight: 600; }
         QLabel#scheduleDate { color: #aeb7be; font-size: 13px; }
@@ -98,6 +99,21 @@ QString scheduleStyle()
         QScrollBar:horizontal { background: #171b21; height: 10px; }
         QScrollBar::handle:horizontal { background: #47535e; border-radius: 5px; min-width: 36px; }
     )");
+    if (ThemeManager::instance()->isLight()) {
+        style += QStringLiteral(R"(
+            QWidget#ScheduleWindow { background:#f4f8ff; color:#253552; }
+            QLabel#scheduleTitle { color:#253552; }
+            QLabel#scheduleDate { color:#687895; }
+            QLabel#scheduleStatus { color:#75849d; }
+            QPushButton { background:#e2ecfb; color:#253552; border-color:#b6c8e3; }
+            QPushButton:hover { background:#d6e2f5; border-color:#8b78c5; }
+            QPushButton#currentWeek { color:#6d5ba6; border-color:#8b78c5; }
+            QScrollArea { background:#f4f8ff; border-color:#c1d0e6; }
+            QScrollBar:vertical, QScrollBar:horizontal { background:#edf3fc; }
+            QScrollBar::handle:vertical, QScrollBar::handle:horizontal { background:#aebed7; }
+        )");
+    }
+    return style;
 }
 
 } // namespace
@@ -133,30 +149,33 @@ protected:
     {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.fillRect(rect(), QColor(23, 27, 33));
+        const bool light = ThemeManager::instance()->isLight();
+        painter.fillRect(rect(), light ? QColor(247, 250, 255) : QColor(23, 27, 33));
         const qreal usableWidth = qMax<qreal>(7 * kDayWidth, width() - kTimeAxisWidth);
         const qreal dayWidth = usableWidth / 7.0;
         const QDate monday = semester_.startDate.addDays((week_ - 1) * 7);
 
-        painter.fillRect(QRectF(0, 0, width(), kHeaderHeight), QColor(29, 35, 42));
-        painter.setPen(QColor(59, 69, 79));
+        painter.fillRect(QRectF(0, 0, width(), kHeaderHeight),
+                         light ? QColor(229, 237, 249) : QColor(29, 35, 42));
+        painter.setPen(light ? QColor(187, 202, 224) : QColor(59, 69, 79));
         painter.drawLine(kTimeAxisWidth, 0, kTimeAxisWidth, height());
         for (int day = 0; day < 7; ++day) {
             const qreal left = kTimeAxisWidth + day * dayWidth;
             const QDate date = monday.addDays(day);
             if (date == QDate::currentDate())
                 painter.fillRect(QRectF(left + 1, 0, dayWidth - 2, height()), QColor(67, 82, 91, 38));
-            painter.setPen(QColor(59, 69, 79));
+            painter.setPen(light ? QColor(187, 202, 224) : QColor(59, 69, 79));
             painter.drawLine(QPointF(left, 0), QPointF(left, height()));
-            painter.setPen(date == QDate::currentDate() ? QColor(242, 222, 193)
-                                                       : QColor(215, 222, 226));
+            painter.setPen(date == QDate::currentDate()
+                               ? (light ? QColor(109, 91, 166) : QColor(242, 222, 193))
+                               : (light ? QColor(43, 59, 87) : QColor(215, 222, 226)));
             QFont dayFont = font();
             dayFont.setPointSize(10);
             dayFont.setWeight(date == QDate::currentDate() ? QFont::DemiBold : QFont::Normal);
             painter.setFont(dayFont);
             painter.drawText(QRectF(left + 4, 7, dayWidth - 8, 23), Qt::AlignCenter,
                              kWeekdays.at(day));
-            painter.setPen(QColor(139, 151, 159));
+            painter.setPen(light ? QColor(103, 120, 148) : QColor(139, 151, 159));
             painter.drawText(QRectF(left + 4, 29, dayWidth - 8, 20), Qt::AlignCenter,
                              date.toString(QStringLiteral("M/d")));
         }
@@ -167,10 +186,11 @@ protected:
         for (int minute = startMinute_; minute <= endMinute_; minute += 30) {
             const qreal y = kHeaderHeight + (minute - startMinute_) * kPixelsPerMinute;
             const bool wholeHour = minute % 60 == 0;
-            painter.setPen(wholeHour ? QColor(66, 76, 87) : QColor(49, 57, 66));
+            painter.setPen(light ? (wholeHour ? QColor(196, 208, 226) : QColor(222, 230, 242))
+                                 : (wholeHour ? QColor(66, 76, 87) : QColor(49, 57, 66)));
             painter.drawLine(QPointF(kTimeAxisWidth, y), QPointF(width(), y));
             if (wholeHour) {
-                painter.setPen(QColor(132, 143, 151));
+                painter.setPen(light ? QColor(103, 120, 148) : QColor(132, 143, 151));
                 painter.drawText(QRectF(6, y - 10, kTimeAxisWidth - 13, 20),
                                  Qt::AlignRight | Qt::AlignVCenter,
                                  QTime(minute / 60 % 24, 0).toString(QStringLiteral("HH:mm")));
@@ -232,7 +252,7 @@ protected:
             }
         }
         if (!hasCourse) {
-            painter.setPen(QColor(128, 139, 148));
+            painter.setPen(light ? QColor(103, 120, 148) : QColor(128, 139, 148));
             QFont emptyFont = font();
             emptyFont.setPointSize(12);
             painter.setFont(emptyFont);
@@ -258,6 +278,8 @@ ScheduleWindow::ScheduleWindow(ScheduleRepository *repository, QWidget *parent)
     resize(1180, 760);
     setMinimumSize(760, 520);
     setStyleSheet(scheduleStyle());
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, &ScheduleWindow::applyTheme);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(22, 18, 22, 20);
@@ -298,6 +320,13 @@ ScheduleWindow::ScheduleWindow(ScheduleRepository *repository, QWidget *parent)
     connect(clock, &QTimer::timeout, canvas_, qOverload<>(&QWidget::update));
     clock->start();
     refresh();
+}
+
+void ScheduleWindow::applyTheme()
+{
+    setStyleSheet(scheduleStyle());
+    if (canvas_)
+        canvas_->update();
 }
 
 void ScheduleWindow::refresh()

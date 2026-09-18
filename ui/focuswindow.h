@@ -9,6 +9,8 @@ class ConversationLog;
 class ChatLogWindow;
 class CourseSidebar;
 class ScheduleRepository;
+class TodoRepository;
+class TodoWindow;
 class PomodoroController;
 class QFrame;
 class QLabel;
@@ -26,14 +28,15 @@ class FocusWindow : public QWidget
 public:
     explicit FocusWindow(ConfigManager *configManager, IAiSession *ai, ConversationLog *conversationLog,
                          ChatLogWindow *chatLogWindow, ScheduleRepository *scheduleRepository,
+                         TodoRepository *todoRepository,
                          QWidget *parent = nullptr);
     void reloadBackground();
     void showCourseReminder(const QString &text);
+    void showTodos();
 
 signals:
     void petRequested();
     void recordsRequested();
-    void todosRequested();
     void settingsRequested();
 
 protected:
@@ -53,6 +56,7 @@ private:
     void useFallbackBackground();
     void updateDateTime();
     void updateCharacterPixmap();
+    void applyTheme();
 
     ConfigManager *configManager_ = nullptr;
     IAiSession *ai_ = nullptr;
@@ -77,6 +81,7 @@ private:
     QSpinBox *longSpin_ = nullptr;
     QSystemTrayIcon *trayIcon_ = nullptr;
     CourseSidebar *courseSidebar_ = nullptr;
+    TodoWindow *todoWindow_ = nullptr;
     QPixmap characterSource_;
     bool initialPlacementApplied_ = false;
 };

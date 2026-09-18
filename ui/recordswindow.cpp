@@ -2,6 +2,7 @@
 
 #include "../core/data/journalrepository.h"
 #include "../core/data/noterepository.h"
+#include "../core/theme.h"
 
 #include <QButtonGroup>
 #include <QCloseEvent>
@@ -192,7 +193,7 @@ RecordsWindow::RecordsWindow(JournalRepository *journalRepository,
     editorLayout->addLayout(actions);
     content->addWidget(editor, 1);
 
-    setStyleSheet(QStringLiteral(R"(
+    nightStyle_ = QStringLiteral(R"(
         #recordsShell {
             background: rgba(22, 27, 43, 242);
             border: 1px solid rgba(184, 205, 238, 88);
@@ -278,7 +279,10 @@ RecordsWindow::RecordsWindow(JournalRepository *journalRepository,
         #recordsDeleteButton:disabled { color: #596175; border-color: rgba(100, 110, 130, 35); }
         #recordsSaveButton { color: #192039; background: #bed7ff; border: 1px solid #dceaff; }
         #recordsSaveButton:hover { background: #d1e3ff; }
-    )"));
+    )");
+    applyTheme();
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, &RecordsWindow::applyTheme);
 
     connect(closeButton, &QToolButton::clicked, this, &QWidget::close);
     connect(journalModeButton_, &QToolButton::clicked, this,
@@ -298,6 +302,41 @@ RecordsWindow::RecordsWindow(JournalRepository *journalRepository,
     connect(dateEdit_, &QDateEdit::dateChanged, this, [this] { markDirty(); });
 
     switchMode(Mode::Journal);
+}
+
+void RecordsWindow::applyTheme()
+{
+    QString style = nightStyle_;
+    if (ThemeManager::instance()->isLight()) {
+        style += QStringLiteral(R"(
+            #recordsShell { background:rgba(244,248,255,242); border-color:rgba(93,118,157,75); }
+            #recordsTitleBar { background:rgba(226,236,251,230); border-bottom-color:rgba(73,99,137,38); }
+            #recordsWindowTitle { color:#253552; }
+            #recordsWindowSubtitle { color:#687895; }
+            #recordsCloseButton { color:#63728c; }
+            #recordsRail { background:rgba(232,239,250,218); border-right-color:rgba(73,99,137,38); }
+            #recordsModeButton { color:#687895; }
+            #recordsModeButton:hover { color:#253552; background:rgba(139,120,197,28); }
+            #recordsModeButton:checked { color:white; background:#8b78c5; }
+            #recordsNewButton { color:white; background:#8b78c5; border-color:#a99bd0; }
+            #recordsNewButton:hover { background:#7562ae; border-color:#8b78c5; }
+            #recordsRailCaption, #recordsStatus { color:#71809a; }
+            #recordsList { color:#344561; }
+            #recordsList::item:hover { background:rgba(139,120,197,28); color:#253552; }
+            #recordsList::item:selected { color:#253552; background:rgba(139,120,197,55); border-left-color:#8b78c5; }
+            #recordsEditor { background:rgba(255,255,255,170); }
+            #recordsSectionLabel { color:#64738c; }
+            #recordsDateEdit, #recordsTitleEdit, #recordsTagsEdit { color:#253552; background:rgba(255,255,255,210); border-color:rgba(76,102,140,55); }
+            #recordsDateEdit:hover, #recordsTitleEdit:hover, #recordsTagsEdit:hover,
+            #recordsDateEdit:focus, #recordsTitleEdit:focus, #recordsTagsEdit:focus { border-color:#8b78c5; }
+            #recordsBodyEdit { color:#253552; background:rgba(255,255,255,185); border-color:rgba(76,102,140,48); selection-background-color:#8b78c5; }
+            #recordsBodyEdit:focus { border-color:#8b78c5; }
+            #recordsDeleteButton { color:#586985; border-color:rgba(76,102,140,55); }
+            #recordsSaveButton { color:white; background:#8b78c5; border-color:#a99bd0; }
+            #recordsSaveButton:hover { background:#7562ae; }
+        )");
+    }
+    setStyleSheet(style);
 }
 
 bool RecordsWindow::eventFilter(QObject *watched, QEvent *event)

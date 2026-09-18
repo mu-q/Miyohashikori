@@ -1,5 +1,7 @@
 ﻿#include "replybubble.h"
 
+#include "../core/theme.h"
+
 #include <QPainter>
 #include <QPaintEvent>
 #include <QTextLayout>
@@ -43,6 +45,8 @@ ReplyBubble::ReplyBubble(QWidget *parent)
     QFont bubbleFont = font();
     bubbleFont.setPointSize(10);
     setFont(bubbleFont);
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, qOverload<>(&QWidget::update));
 }
 
 void ReplyBubble::setText(const QString &text)
@@ -81,19 +85,24 @@ QRect ReplyBubble::textRect() const
 
 QColor ReplyBubble::textColor() const
 {
+    const bool light = ThemeManager::instance()->isLight();
     switch (tone_) {
     case Tone::Message:
-        return QColor(72, 156, 255);
+        return light ? QColor(46, 99, 164) : QColor(72, 156, 255);
     case Tone::Status:
-        return QColor(110, 180, 255);
+        return light ? QColor(96, 76, 153) : QColor(110, 180, 255);
     case Tone::Error:
-        return QColor(255, 120, 120);
+        return light ? QColor(166, 69, 68) : QColor(255, 120, 120);
     }
     return QColor(72, 156, 255);
 }
 
 QColor ReplyBubble::backgroundColor() const
 {
+    if (ThemeManager::instance()->isLight()) {
+        return tone_ == Tone::Error ? QColor(255, 238, 240, 232)
+                                    : QColor(247, 251, 255, 232);
+    }
     switch (tone_) {
     case Tone::Message:
         return QColor(18, 28, 48, 215);
@@ -107,6 +116,10 @@ QColor ReplyBubble::backgroundColor() const
 
 QColor ReplyBubble::borderColor() const
 {
+    if (ThemeManager::instance()->isLight()) {
+        return tone_ == Tone::Error ? QColor(196, 93, 102, 145)
+                                    : QColor(95, 122, 166, 125);
+    }
     switch (tone_) {
     case Tone::Message:
         return QColor(72, 156, 255, 140);

@@ -28,7 +28,6 @@ class TodoRepository;
 class ScheduleRepository;
 class CourseReminderController;
 class RecordsWindow;
-class TodoWindow;
 struct CourseOccurrence;
 
 class MainWindow : public QWidget
@@ -46,6 +45,7 @@ protected:
 
 private:
     void applyWindowChrome();
+    void applyTheme();
     void persistWindowPosition() const;
     void wireAiSession();
     void refreshConfigHint();
@@ -90,7 +90,6 @@ private:
     ConversationLog *conversationLog_ = nullptr;
     ChatLogWindow *chatLogWindow_ = nullptr;
     RecordsWindow *recordsWindow_ = nullptr;
-    TodoWindow *todoWindow_ = nullptr;
     FocusWindow *focusWindow_ = nullptr;
     QString lastAssistantText_;
     QString lastAssistantSpeechText_;

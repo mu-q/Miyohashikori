@@ -5,7 +5,9 @@
 #include "../core/config/appconfig.h"
 #include "../core/config/configmanager.h"
 #include "../core/pomodorocontroller.h"
+#include "../core/theme.h"
 #include "../core/data/schedulerepository.h"
+#include "../core/data/todorepository.h"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -36,11 +38,12 @@
 #include <QVideoWidget>
 #include "chatlogwindow.h"
 #include "coursesidebar.h"
+#include "todowindow.h"
 
 namespace {
 QString focusStyle()
 {
-    return QStringLiteral(R"(
+    QString style = QStringLiteral(R"(
         QWidget#FocusWindow { background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #263550, stop:0.54 #171c2d, stop:1 #2d2341); }
         QDialog, QMessageBox { background: #171c2d; }
         QLabel { color: #edf4ff; font-family: "Microsoft YaHei UI"; }
@@ -80,11 +83,40 @@ QString focusStyle()
         QPushButton#importSpreadsheet { color: #d8c9ff; }
         QPushButton#smallCourseAction { min-width: 38px; padding: 7px 8px; }
     )");
+    if (ThemeManager::instance()->isLight()) {
+        style += QStringLiteral(R"(
+            QWidget#FocusWindow { background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #dceaff, stop:0.54 #f4f8ff, stop:1 #ebe4fa); }
+            QDialog, QMessageBox { background:#f4f8ff; }
+            QLabel { color:#253552; }
+            QLabel#brand, QLabel#headerTime, QLabel#timer, QLabel#sidebarTitle { color:#1f2e49; }
+            QLabel#eyebrow, QLabel#headerDate, QLabel#cycles, QLabel#sceneHint, QLabel#scheduleMeta { color:#687895; }
+            QFrame#scene { background:rgba(255,255,255,92); border-color:rgba(67,91,129,40); }
+            QFrame#timerRing { background:rgba(244,248,255,220); border-color:#78a9de; }
+            QFrame#dialogue, QFrame#durations, QWidget#courseSidebar { background:rgba(244,248,255,205); border-color:rgba(73,99,137,58); }
+            QLabel#nextCourse { background:rgba(139,120,197,38); color:#253552; border-left-color:#8b78c5; }
+            QLabel#speaker { color:#7562ae; }
+            QLabel#dialogueText { color:#31415e; }
+            QLineEdit { background:rgba(255,255,255,220); color:#253552; border-color:rgba(78,104,142,75); selection-background-color:#8b78c5; }
+            QLineEdit:focus { border-color:#8b78c5; }
+            QPushButton, QToolButton { background:rgba(226,236,251,225); color:#253552; border-color:rgba(76,102,140,65); }
+            QPushButton:hover, QToolButton:hover { background:rgba(218,207,241,225); border-color:#8b78c5; }
+            QPushButton:pressed, QToolButton:pressed { background:rgba(203,216,237,240); }
+            QToolButton#timerControl { background:#8b78c5; color:white; }
+            QToolButton#timerSkip { background:rgba(226,236,251,225); color:#344561; }
+            QSpinBox, QComboBox, QDateEdit, QTimeEdit { background:rgba(255,255,255,220); color:#253552; border-color:rgba(78,104,142,68); }
+            QComboBox QAbstractItemView { background:#f8fbff; color:#253552; selection-background-color:#d9d0f0; }
+            QListWidget#courseList { color:#253552; }
+            QPushButton#viewSchedule { color:#3f6092; }
+            QPushButton#importSpreadsheet { color:#6d5ba6; }
+        )");
+    }
+    return style;
 }
 }
 
 FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, ConversationLog *conversationLog,
                          ChatLogWindow *chatLogWindow, ScheduleRepository *scheduleRepository,
+                         TodoRepository *todoRepository,
                          QWidget *parent)
     : QWidget(parent), configManager_(configManager), ai_(ai), conversationLog_(conversationLog), chatLogWindow_(chatLogWindow), pomodoro_(new PomodoroController(configManager, this)),
       videoPlayer_(new QMediaPlayer(this)), videoWidget_(new QVideoWidget(this)), background_(new QWidget(this)),
@@ -99,6 +131,8 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     resize(1280, 780);
     setMinimumSize(820, 560);
     setStyleSheet(focusStyle());
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, &FocusWindow::applyTheme);
 
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
         auto *trayMenu = new QMenu(this);
@@ -112,7 +146,12 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
         });
         trayMenu->addSeparator();
         trayMenu->addAction(QStringLiteral("日记与笔记"), this, &FocusWindow::recordsRequested);
-        trayMenu->addAction(QStringLiteral("待办事项"), this, &FocusWindow::todosRequested);
+        trayMenu->addAction(QStringLiteral("待办事项"), this, [this] {
+            showNormal();
+            raise();
+            activateWindow();
+            showTodos();
+        });
         trayMenu->addAction(QStringLiteral("设置"), this, &FocusWindow::settingsRequested);
         trayMenu->addSeparator();
         trayMenu->addAction(QStringLiteral("退出"), qApp, &QApplication::quit);
@@ -172,6 +211,9 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     auto *records = new QToolButton;
     records->setText(QStringLiteral("手账"));
     records->setToolTip(QStringLiteral("打开日记与笔记"));
+    auto *todos = new QToolButton;
+    todos->setText(QStringLiteral("待办"));
+    todos->setToolTip(QStringLiteral("打开待办事项"));
     header->addLayout(identity);
     header->addSpacing(20);
     header->addWidget(timeLabel_);
@@ -179,6 +221,7 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     header->addWidget(cyclesLabel_);
     header->addSpacing(12);
     header->addWidget(records);
+    header->addWidget(todos);
     header->addWidget(history);
     header->addWidget(settings);
     root->addLayout(header);
@@ -267,8 +310,13 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     content->addWidget(courseSidebar_);
     root->addLayout(content, 1);
 
+    todoWindow_ = new TodoWindow(todoRepository, this);
+    todoWindow_->setGeometry(rect());
+    todoWindow_->hide();
+
     connect(settings, &QToolButton::clicked, this, &FocusWindow::toggleDurationEditor);
     connect(records, &QToolButton::clicked, this, &FocusWindow::recordsRequested);
+    connect(todos, &QToolButton::clicked, this, &FocusWindow::showTodos);
     connect(history, &QToolButton::clicked, this, [this] { if (chatLogWindow_) { chatLogWindow_->show(); chatLogWindow_->raise(); chatLogWindow_->activateWindow(); } });
     connect(saveDurations, &QPushButton::clicked, this, &FocusWindow::saveDurations);
     connect(playButton_, &QToolButton::clicked, this, [this] { pomodoro_->isRunning() ? pomodoro_->pause() : pomodoro_->start(); });
@@ -307,6 +355,21 @@ void FocusWindow::showCourseReminder(const QString &text)
         courseSidebar_->refresh();
 }
 
+void FocusWindow::showTodos()
+{
+    if (!todoWindow_)
+        return;
+    todoWindow_->setGeometry(rect());
+    todoWindow_->present();
+}
+
+void FocusWindow::applyTheme()
+{
+    setStyleSheet(focusStyle());
+    if (configManager_->config().backgroundVideoPath.isEmpty())
+        useFallbackBackground();
+}
+
 void FocusWindow::reloadBackground()
 {
     const QString path = configManager_->config().backgroundVideoPath;
@@ -319,6 +382,7 @@ void FocusWindow::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     if (videoWidget_) videoWidget_->setGeometry(background_->rect());
+    if (todoWindow_) todoWindow_->setGeometry(rect());
     updateCharacterPixmap();
 }
 
@@ -343,6 +407,10 @@ void FocusWindow::showEvent(QShowEvent *event)
 
 void FocusWindow::closeEvent(QCloseEvent *event)
 {
+    if (todoWindow_ && todoWindow_->isVisible() && !todoWindow_->requestClose()) {
+        event->ignore();
+        return;
+    }
     pomodoro_->pause();
     QWidget::closeEvent(event);
 }
@@ -372,7 +440,10 @@ void FocusWindow::updateRunning(bool running) { playButton_->setText(running ? Q
 void FocusWindow::setDialogue(const QString &text, bool isError)
 {
     dialogueText_->setText(text);
-    dialogueText_->setStyleSheet(isError ? QStringLiteral("color: #efb4ad;") : QString());
+    dialogueText_->setStyleSheet(isError
+        ? (ThemeManager::instance()->isLight() ? QStringLiteral("color:#a94e4a;")
+                                              : QStringLiteral("color:#efb4ad;"))
+        : QString());
 }
 void FocusWindow::sendChat()
 {
@@ -394,7 +465,9 @@ void FocusWindow::showNotification(const QString &title, const QString &body)
 void FocusWindow::useFallbackBackground()
 {
     videoPlayer_->stop(); videoWidget_->hide();
-    background_->setStyleSheet(QStringLiteral("background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #263550, stop:0.52 #171c2d, stop:1 #2d2341);"));
+    background_->setStyleSheet(ThemeManager::instance()->isLight()
+        ? QStringLiteral("background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #dceaff, stop:0.52 #f4f8ff, stop:1 #ebe4fa);")
+        : QStringLiteral("background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #263550, stop:0.52 #171c2d, stop:1 #2d2341);"));
 }
 
 void FocusWindow::updateDateTime()

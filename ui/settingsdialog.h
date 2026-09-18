@@ -4,6 +4,7 @@
 
 class ConfigManager;
 class QCheckBox;
+class QComboBox;
 class QDoubleSpinBox;
 class QLineEdit;
 class QSpinBox;
@@ -20,6 +21,7 @@ private:
     void saveSettings();
 
     ConfigManager *configManager_ = nullptr;
+    QComboBox *themeBox_ = nullptr;
     QLineEdit *llmEndpoint_ = nullptr;
     QLineEdit *llmApiKey_ = nullptr;
     QLineEdit *llmModel_ = nullptr;

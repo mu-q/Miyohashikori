@@ -4,6 +4,7 @@
 #include "core/ai/openaichatsession.h"
 #include "core/conversationlog.h"
 #include "core/apppaths.h"
+#include "core/theme.h"
 #include "core/config/appconfig.h"
 #include "core/config/configmanager.h"
 #include "core/data/databasemanager.h"
@@ -21,7 +22,6 @@
 #include "ui/chatlogwindow.h"
 #include "ui/recordswindow.h"
 #include "ui/settingsdialog.h"
-#include "ui/todowindow.h"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -97,8 +97,9 @@ MainWindow::MainWindow(QWidget *parent)
     , conversationLog_(new ConversationLog(this))
     , chatLogWindow_(new ChatLogWindow(conversationLog_, this))
 {
-    applyWindowChrome();
     configManager_->load();
+    ThemeManager::instance()->apply(configManager_->config().theme);
+    applyWindowChrome();
     if (!databaseManager_->initialize()) {
         qWarning().noquote() << QStringLiteral("扩展数据功能初始化失败：%1")
                                     .arg(databaseManager_->errorString());
@@ -112,20 +113,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     inputLine_->setPlaceholderText(QStringLiteral("输入对话…（回车发送）"));
     inputLine_->setClearButtonEnabled(true);
-    inputLine_->setStyleSheet(
-        QStringLiteral("QLineEdit { background: rgba(40,44,56,0.92); color: #e8eaf0; "
-                       "border: 1px solid #5c6370; border-radius: 6px; padding: 6px; }"));
-
     recordsButton_->setIcon(createRecordsIcon());
     recordsButton_->setIconSize(QSize(28, 28));
     recordsButton_->setFixedSize(42, 42);
     recordsButton_->setToolTip(QStringLiteral("打开日记与笔记"));
     recordsButton_->setCursor(Qt::PointingHandCursor);
-    recordsButton_->setStyleSheet(QStringLiteral(
-        "QToolButton { background:rgba(212,226,252,0.94); border:1px solid rgba(255,255,255,0.8); "
-        "border-radius:21px; padding:5px; }"
-        "QToolButton:hover { background:#f2ecff; border-color:#cbbcf0; }"
-        "QToolButton:pressed { background:#b9ccea; padding-top:7px; }"));
+    applyTheme();
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, &MainWindow::applyTheme);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(8, 8, 8, 8);
@@ -195,6 +190,25 @@ void MainWindow::applyWindowChrome()
     setAttribute(Qt::WA_TranslucentBackground, true);
     setStyleSheet(QStringLiteral("#MainWindowPet { background:transparent; }"));
     setObjectName(QStringLiteral("MainWindowPet"));
+}
+
+void MainWindow::applyTheme()
+{
+    const bool light = ThemeManager::instance()->isLight();
+    inputLine_->setStyleSheet(light
+        ? QStringLiteral("QLineEdit { background:rgba(255,255,255,0.94); color:#253552; "
+                         "border:1px solid #b6c8e3; border-radius:8px; padding:7px; "
+                         "selection-background-color:#8b78c5; }")
+        : QStringLiteral("QLineEdit { background:rgba(23,34,56,0.94); color:#edf4ff; "
+                         "border:1px solid #5875a2; border-radius:8px; padding:7px; "
+                         "selection-background-color:#7caaf8; }"));
+    recordsButton_->setStyleSheet(light
+        ? QStringLiteral("QToolButton { background:rgba(244,248,255,0.96); border:1px solid #b8c9e4; "
+                         "border-radius:21px; padding:5px; } QToolButton:hover { background:#e9e2ff; "
+                         "border-color:#8b78c5; } QToolButton:pressed { background:#d8e4f5; padding-top:7px; }")
+        : QStringLiteral("QToolButton { background:rgba(212,226,252,0.94); border:1px solid rgba(255,255,255,0.8); "
+                         "border-radius:21px; padding:5px; } QToolButton:hover { background:#f2ecff; "
+                         "border-color:#cbbcf0; } QToolButton:pressed { background:#b9ccea; padding-top:7px; }"));
 }
 
 void MainWindow::persistWindowPosition() const
@@ -537,18 +551,15 @@ void MainWindow::openRecordsWindow()
 
 void MainWindow::openTodoWindow()
 {
-    if (!todoWindow_)
-        todoWindow_ = new TodoWindow(todoRepository_.get(), this);
-    todoWindow_->show();
-    todoWindow_->raise();
-    todoWindow_->activateWindow();
+    openFocusWindow();
+    focusWindow_->showTodos();
 }
 
 void MainWindow::openFocusWindow()
 {
     if (!focusWindow_) {
         focusWindow_ = new FocusWindow(configManager_, ai_, conversationLog_, chatLogWindow_,
-                                       scheduleRepository_.get());
+                                       scheduleRepository_.get(), todoRepository_.get());
         connect(focusWindow_, &FocusWindow::petRequested, this, [this] {
             showNormal();
             raise();
@@ -556,8 +567,6 @@ void MainWindow::openFocusWindow()
         });
         connect(focusWindow_, &FocusWindow::recordsRequested,
                 this, &MainWindow::openRecordsWindow);
-        connect(focusWindow_, &FocusWindow::todosRequested,
-                this, &MainWindow::openTodoWindow);
         connect(focusWindow_, &FocusWindow::settingsRequested,
                 this, &MainWindow::openSettings);
     }
