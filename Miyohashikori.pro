@@ -34,6 +34,8 @@ SOURCES += \
     ui/characterspriteview.cpp \
     ui/replybubble.cpp \
     ui/chatlogwindow.cpp \
+    ui/settingsdialog.cpp \
+    ui/todowindow.cpp \
     ui/recordswindow.cpp \
     ui/coursesidebar.cpp \
     ui/schedulewindow.cpp \
@@ -70,6 +72,8 @@ HEADERS += \
     ui/characterspriteview.h \
     ui/replybubble.h \
     ui/chatlogwindow.h \
+    ui/settingsdialog.h \
+    ui/todowindow.h \
     ui/recordswindow.h \
     ui/coursesidebar.h \
     ui/schedulewindow.h \

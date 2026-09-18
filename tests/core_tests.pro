@@ -15,6 +15,7 @@ SOURCES += \
     ../core/config/appconfig.cpp \
     ../core/config/configmanager.cpp \
     ../core/pomodorocontroller.cpp \
+    ../core/conversationlog.cpp \
     ../core/ai/chathistory.cpp \
     ../core/ai/emotionparser.cpp \
     ../core/ai/openaichatsession.cpp
@@ -24,6 +25,7 @@ HEADERS += \
     ../core/config/appconfig.h \
     ../core/config/configmanager.h \
     ../core/pomodorocontroller.h \
+    ../core/conversationlog.h \
     ../core/ai/chathistory.h \
     ../core/ai/emotionparser.h \
     ../core/ai/iaisession.h \

@@ -48,6 +48,11 @@ QString logsRoot()
     return QDir::cleanPath(appDataRoot() + QStringLiteral("/logs"));
 }
 
+QString conversationHistoryFilePath()
+{
+    return QDir::cleanPath(appDataRoot() + QStringLiteral("/conversation-history.json"));
+}
+
 QString ttsCacheRoot()
 {
     return QDir::cleanPath(appDataRoot() + QStringLiteral("/cache/tts"));

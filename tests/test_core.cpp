@@ -2,6 +2,7 @@
 #include "../core/config/configmanager.h"
 #include "../core/pomodorocontroller.h"
 #include "../core/ai/openaichatsession.h"
+#include "../core/conversationlog.h"
 
 #include <QDir>
 #include <QFile>
@@ -71,6 +72,7 @@ private slots:
     void naturalCompletionCountsAndNotifies();
     void malformedConfigIsBackedUpBeforeReset();
     void aiRequestsAreProcessedSerially();
+    void conversationHistoryPersistsAndCanBeCleared();
 };
 
 void CoreTests::durationChangesResetPausedPhase()
@@ -185,6 +187,31 @@ void CoreTests::aiRequestsAreProcessedSerially()
                                  && !busyChanges.last().at(0).toBool(),
                              1000);
     QCOMPARE(busyChanges.first().at(0).toBool(), true);
+}
+
+void CoreTests::conversationHistoryPersistsAndCanBeCleared()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("conversation-history.json"));
+    {
+        ConversationLog log(path);
+        log.addUser(QStringLiteral("晚上好"));
+        log.addHyori(QStringLiteral("晚上好。今天辛苦了。"));
+        QCOMPARE(log.entries().size(), 2);
+    }
+    {
+        ConversationLog reopened(path);
+        QCOMPARE(reopened.entries().size(), 2);
+        QCOMPARE(reopened.entries().first().speaker, ConversationLog::Speaker::User);
+        QCOMPARE(reopened.entries().first().text, QStringLiteral("晚上好"));
+        QCOMPARE(reopened.entries().last().speaker, ConversationLog::Speaker::Hyori);
+        QSignalSpy cleared(&reopened, &ConversationLog::historyCleared);
+        reopened.clear();
+        QCOMPARE(cleared.count(), 1);
+    }
+    ConversationLog empty(path);
+    QVERIFY(empty.entries().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(CoreTests)
