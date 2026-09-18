@@ -21,7 +21,7 @@ class TodoWindow : public QWidget
     Q_OBJECT
 
 public:
-    explicit TodoWindow(TodoRepository *repository, QWidget *parent = nullptr);
+    explicit TodoWindow(TodoRepository *repository);
     void present();
     bool requestClose();
 

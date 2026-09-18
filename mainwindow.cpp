@@ -551,7 +551,8 @@ void MainWindow::openRecordsWindow()
 
 void MainWindow::openTodoWindow()
 {
-    openFocusWindow();
+    if (!focusWindow_)
+        openFocusWindow();
     focusWindow_->showTodos();
 }
 

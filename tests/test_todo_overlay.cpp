@@ -11,15 +11,15 @@
 #include <QTest>
 #include <QWidget>
 
-class TodoOverlayTests : public QObject
+class TodoWindowTests : public QObject
 {
     Q_OBJECT
 
 private slots:
-    void savesAndClosesInsideHostWindow();
+    void savesAndClosesAsIndependentWindow();
 };
 
-void TodoOverlayTests::savesAndClosesInsideHostWindow()
+void TodoWindowTests::savesAndClosesAsIndependentWindow()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -28,25 +28,21 @@ void TodoOverlayTests::savesAndClosesInsideHostWindow()
     QVERIFY2(manager.initialize(), qPrintable(manager.errorString()));
     TodoRepository repository(&manager);
 
-    QWidget focusHost;
-    focusHost.resize(1280, 780);
-    TodoWindow overlay(&repository, &focusHost);
-    overlay.setGeometry(focusHost.rect());
-    focusHost.show();
-    overlay.present();
-    QVERIFY(QTest::qWaitForWindowExposed(&focusHost));
+    TodoWindow window(&repository);
+    window.present();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
 
-    QCOMPARE(overlay.parentWidget(), &focusHost);
-    QVERIFY(overlay.isVisible());
-    QCOMPARE(overlay.geometry(), focusHost.rect());
+    QVERIFY(window.isWindow());
+    QCOMPARE(window.parentWidget(), nullptr);
+    QVERIFY(window.isVisible());
 
     ThemeManager::instance()->apply(QStringLiteral("mist"));
-    QVERIFY(overlay.styleSheet().contains(QStringLiteral("rgba(244, 248, 255, 214)")));
+    QVERIFY(window.styleSheet().contains(QStringLiteral("rgba(244, 248, 255, 214)")));
     ThemeManager::instance()->apply(QStringLiteral("night"));
-    QVERIFY(!overlay.styleSheet().contains(QStringLiteral("rgba(244, 248, 255, 214)")));
+    QVERIFY(!window.styleSheet().contains(QStringLiteral("rgba(244, 248, 255, 214)")));
 
-    auto *title = overlay.findChild<QLineEdit *>(QStringLiteral("todoTitleEdit"));
-    auto *save = overlay.findChild<QPushButton *>(QStringLiteral("saveTodo"));
+    auto *title = window.findChild<QLineEdit *>(QStringLiteral("todoTitleEdit"));
+    auto *save = window.findChild<QPushButton *>(QStringLiteral("saveTodo"));
     QVERIFY(title);
     QVERIFY(save);
     QVERIFY(title->isEnabled());
@@ -62,10 +58,9 @@ void TodoOverlayTests::savesAndClosesInsideHostWindow()
 
     QKeyEvent escapePress(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
     QApplication::sendEvent(title, &escapePress);
-    QTRY_VERIFY(!overlay.isVisible());
-    QVERIFY(focusHost.isVisible());
+    QTRY_VERIFY(!window.isVisible());
 }
 
-QTEST_MAIN(TodoOverlayTests)
+QTEST_MAIN(TodoWindowTests)
 
 #include "test_todo_overlay.moc"

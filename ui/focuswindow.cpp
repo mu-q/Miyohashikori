@@ -310,9 +310,8 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     content->addWidget(courseSidebar_);
     root->addLayout(content, 1);
 
-    todoWindow_ = new TodoWindow(todoRepository, this);
-    todoWindow_->setGeometry(rect());
-    todoWindow_->hide();
+    // 待办拥有独立的原生顶层窗口，不参与专注页的布局与事件层级。
+    todoWindow_ = new TodoWindow(todoRepository);
 
     connect(settings, &QToolButton::clicked, this, &FocusWindow::toggleDurationEditor);
     connect(records, &QToolButton::clicked, this, &FocusWindow::recordsRequested);
@@ -347,6 +346,11 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     updateDateTime(); updatePhase(pomodoro_->phaseName()); updateTimer(pomodoro_->remainingSeconds()); updateRunning(false); reloadBackground();
 }
 
+FocusWindow::~FocusWindow()
+{
+    delete todoWindow_;
+}
+
 void FocusWindow::showCourseReminder(const QString &text)
 {
     setDialogue(text);
@@ -359,7 +363,22 @@ void FocusWindow::showTodos()
 {
     if (!todoWindow_)
         return;
-    todoWindow_->setGeometry(rect());
+    QScreen *screen = QGuiApplication::screenAt(frameGeometry().center());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+    if (screen && !todoWindow_->isVisible()) {
+        const QRect available = screen->availableGeometry();
+        const QSize target(qMin(960, available.width() - 40),
+                           qMin(640, available.height() - 40));
+        todoWindow_->resize(target.expandedTo(todoWindow_->minimumSize()));
+        QPoint position = frameGeometry().center()
+            - QPoint(todoWindow_->width() / 2, todoWindow_->height() / 2);
+        position.setX(qBound(available.left(), position.x(),
+                             qMax(available.left(), available.right() - todoWindow_->width() + 1)));
+        position.setY(qBound(available.top(), position.y(),
+                             qMax(available.top(), available.bottom() - todoWindow_->height() + 1)));
+        todoWindow_->move(position);
+    }
     todoWindow_->present();
 }
 
@@ -382,7 +401,6 @@ void FocusWindow::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     if (videoWidget_) videoWidget_->setGeometry(background_->rect());
-    if (todoWindow_) todoWindow_->setGeometry(rect());
     updateCharacterPixmap();
 }
 
@@ -407,10 +425,6 @@ void FocusWindow::showEvent(QShowEvent *event)
 
 void FocusWindow::closeEvent(QCloseEvent *event)
 {
-    if (todoWindow_ && todoWindow_->isVisible() && !todoWindow_->requestClose()) {
-        event->ignore();
-        return;
-    }
     pomodoro_->pause();
     QWidget::closeEvent(event);
 }

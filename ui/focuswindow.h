@@ -30,6 +30,7 @@ public:
                          ChatLogWindow *chatLogWindow, ScheduleRepository *scheduleRepository,
                          TodoRepository *todoRepository,
                          QWidget *parent = nullptr);
+    ~FocusWindow() override;
     void reloadBackground();
     void showCourseReminder(const QString &text);
     void showTodos();

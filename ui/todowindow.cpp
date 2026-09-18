@@ -67,12 +67,17 @@ QIcon statusStripeIcon(TodoStatus status)
 
 } // namespace
 
-TodoWindow::TodoWindow(TodoRepository *repository, QWidget *parent)
-    : QWidget(parent), repository_(repository)
+TodoWindow::TodoWindow(TodoRepository *repository)
+    : QWidget(nullptr, Qt::Window | Qt::FramelessWindowHint), repository_(repository)
 {
     setObjectName(QStringLiteral("todoOverlay"));
     setAttribute(Qt::WA_StyledBackground, true);
+    setAttribute(Qt::WA_TranslucentBackground, true);
     setFocusPolicy(Qt::StrongFocus);
+    setWindowTitle(QStringLiteral("冰织 · 待办事项"));
+    setWindowIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")));
+    setMinimumSize(820, 560);
+    resize(960, 640);
 
     auto *overlayLayout = new QVBoxLayout(this);
     overlayLayout->setContentsMargins(48, 38, 48, 38);
@@ -207,7 +212,7 @@ TodoWindow::TodoWindow(TodoRepository *repository, QWidget *parent)
     panelLayout->addLayout(content, 1);
 
     nightStyle_ = QStringLiteral(R"(
-        QWidget#todoOverlay { background: rgba(5, 9, 20, 108); font-family: "Microsoft YaHei UI"; }
+        QWidget#todoOverlay { background: transparent; font-family: "Microsoft YaHei UI"; }
         QFrame#todoPanel { background: rgba(23, 34, 56, 205); border: 1px solid rgba(206, 224, 255, 96); border-radius: 22px; }
         QLabel { color: #edf4ff; background: transparent; }
         QLabel#todoEyebrow { color: #8fb9f4; font-size: 11px; font-weight: 700; letter-spacing: 2px; }
@@ -270,7 +275,7 @@ void TodoWindow::applyTheme()
     QString style = nightStyle_;
     if (ThemeManager::instance()->isLight()) {
         style += QStringLiteral(R"(
-            QWidget#todoOverlay { background: rgba(35, 51, 81, 68); }
+            QWidget#todoOverlay { background: transparent; }
             QFrame#todoPanel { background: rgba(244, 248, 255, 214); border-color: rgba(255,255,255,220); }
             QLabel { color:#253552; }
             QLabel#todoEyebrow { color:#6d5ba6; }
@@ -301,7 +306,10 @@ void TodoWindow::applyTheme()
 void TodoWindow::present()
 {
     reload(currentId_);
-    show();
+    if (isMinimized())
+        showNormal();
+    else
+        show();
     raise();
     (currentId_ < 0 ? static_cast<QWidget *>(titleEdit_) : static_cast<QWidget *>(list_))->setFocus();
 }
