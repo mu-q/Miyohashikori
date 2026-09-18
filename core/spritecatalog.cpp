@@ -164,6 +164,12 @@ bool SpriteCatalog::loadEmotionImages()
             emotionImages_.insert(emotion, std::move(img));
         }
     }
+    if (!emotionImages_.contains(QStringLiteral("excited"))) {
+        if (emotionImages_.contains(QStringLiteral("happy")))
+            emotionImages_.insert(QStringLiteral("excited"), emotionImages_.value(QStringLiteral("happy")));
+        else if (emotionImages_.contains(QStringLiteral("smile")))
+            emotionImages_.insert(QStringLiteral("excited"), emotionImages_.value(QStringLiteral("smile")));
+    }
     return !emotionImages_.isEmpty();
 }
 

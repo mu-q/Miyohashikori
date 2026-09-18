@@ -3,12 +3,14 @@
 #include <QDialogButtonBox>
 #include <QTextBrowser>
 #include <QScrollBar>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 ChatLogWindow::ChatLogWindow(ConversationLog *log, QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(QStringLiteral("本次运行的对话记录"));
+    setWindowTitle(QStringLiteral("对话记录"));
     resize(520, 620);
     auto *layout = new QVBoxLayout(this);
     browser_ = new QTextBrowser(this);
@@ -16,7 +18,16 @@ ChatLogWindow::ChatLogWindow(ConversationLog *log, QWidget *parent)
     browser_->setStyleSheet(QStringLiteral("QTextBrowser { background:#20242b; color:#edf0f1; border:1px solid #4f555d; padding:12px; }"));
     layout->addWidget(browser_);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto *clearButton = buttons->addButton(QStringLiteral("清空记录"), QDialogButtonBox::ResetRole);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
+    connect(clearButton, &QPushButton::clicked, this, [this, log] {
+        if (QMessageBox::question(this, QStringLiteral("清空对话记录"),
+                                  QStringLiteral("确定要删除全部本地对话记录吗？"))
+            == QMessageBox::Yes) {
+            log->clear();
+        }
+    });
+    connect(log, &ConversationLog::historyCleared, browser_, &QTextBrowser::clear);
     layout->addWidget(buttons);
     for (const ConversationLog::Entry &entry : log->entries()) appendEntry(entry);
     connect(log, &ConversationLog::entryAdded, this, &ChatLogWindow::appendEntry);

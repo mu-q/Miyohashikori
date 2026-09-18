@@ -17,6 +17,7 @@
 #include <QLineEdit>
 #include <QLocale>
 #include <QMediaPlayer>
+#include <QMenu>
 #include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -79,7 +80,7 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
                          QWidget *parent)
     : QWidget(parent), configManager_(configManager), ai_(ai), conversationLog_(conversationLog), chatLogWindow_(chatLogWindow), pomodoro_(new PomodoroController(configManager, this)),
       videoPlayer_(new QMediaPlayer(this)), videoWidget_(new QVideoWidget(this)), background_(new QWidget(this)),
-      trayIcon_(new QSystemTrayIcon(style()->standardIcon(QStyle::SP_ComputerIcon), this))
+      trayIcon_(new QSystemTrayIcon(QIcon(QStringLiteral(":/resources/icons/hyori_chibi.png")), this))
 {
     setObjectName(QStringLiteral("FocusWindow"));
     setWindowFlag(Qt::Window, true);
@@ -88,6 +89,39 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
     resize(1280, 780);
     setMinimumSize(820, 560);
     setStyleSheet(focusStyle());
+
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        auto *trayMenu = new QMenu(this);
+        trayMenu->addAction(QStringLiteral("显示桌宠"), this, [this] {
+            if (QWidget *pet = parentWidget()) {
+                pet->showNormal();
+                pet->raise();
+                pet->activateWindow();
+            }
+        });
+        trayMenu->addAction(QStringLiteral("打开专注模式"), this, [this] {
+            showNormal();
+            raise();
+            activateWindow();
+        });
+        trayMenu->addSeparator();
+        trayMenu->addAction(QStringLiteral("日记与笔记"), this, &FocusWindow::recordsRequested);
+        trayMenu->addAction(QStringLiteral("待办事项"), this, &FocusWindow::todosRequested);
+        trayMenu->addAction(QStringLiteral("设置"), this, &FocusWindow::settingsRequested);
+        trayMenu->addSeparator();
+        trayMenu->addAction(QStringLiteral("退出"), qApp, &QApplication::quit);
+        trayIcon_->setToolTip(QStringLiteral("冰织 · 陪伴与专注"));
+        trayIcon_->setContextMenu(trayMenu);
+        connect(trayIcon_, &QSystemTrayIcon::activated, this,
+                [this](QSystemTrayIcon::ActivationReason reason) {
+                    if (reason != QSystemTrayIcon::Trigger)
+                        return;
+                    showNormal();
+                    raise();
+                    activateWindow();
+                });
+        trayIcon_->show();
+    }
 
     videoWidget_->setParent(background_);
     videoWidget_->setAspectRatioMode(Qt::KeepAspectRatioByExpanding);
@@ -236,9 +270,10 @@ FocusWindow::FocusWindow(ConfigManager *configManager, IAiSession *ai, Conversat
         if (ai_) ai_->submit(workFinished ? QStringLiteral("我刚完成了一轮番茄钟，请用一句话温柔地提醒我休息。") : QStringLiteral("我的休息时间结束了，请用一句话陪我开始专注。"));
     });
     if (ai_) {
-        connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) { setDialogue(text); input_->setEnabled(true); });
+        connect(ai_, &IAiSession::assistantMessage, this, [this](const QString &text) { setDialogue(text); });
         connect(ai_, &IAiSession::sessionStatus, this, [this](const QString &text) { setDialogue(text); });
-        connect(ai_, &IAiSession::sessionError, this, [this](const QString &text) { setDialogue(text, true); input_->setEnabled(true); });
+        connect(ai_, &IAiSession::sessionError, this, [this](const QString &text) { setDialogue(text, true); });
+        connect(ai_, &IAiSession::busyChanged, this, [this](bool busy) { input_->setEnabled(!busy); });
     }
     auto *dateTimeTimer = new QTimer(this);
     dateTimeTimer->setInterval(1000);
@@ -319,7 +354,7 @@ void FocusWindow::saveDurations()
 void FocusWindow::showNotification(const QString &title, const QString &body)
 {
     if (!QSystemTrayIcon::isSystemTrayAvailable()) return;
-    trayIcon_->show(); trayIcon_->showMessage(title, body, QSystemTrayIcon::Information, 5000);
+    trayIcon_->showMessage(title, body, QSystemTrayIcon::Information, 5000);
 }
 void FocusWindow::useFallbackBackground()
 {

@@ -25,7 +25,7 @@ PomodoroController::PomodoroController(ConfigManager *configManager, QObject *pa
         if (remainingSeconds_ == 0) {
             const Phase finished = phase_;
             emit completed(finished);
-            advancePhase();
+            advancePhase(true);
         }
     });
 }
@@ -44,7 +44,7 @@ QString PomodoroController::phaseName() const
 
 void PomodoroController::start() { if (!timer_->isActive()) { timer_->start(); emit runningChanged(true); } }
 void PomodoroController::pause() { if (timer_->isActive()) { timer_->stop(); persist(); emit runningChanged(false); } }
-void PomodoroController::skip() { const Phase finished = phase_; emit completed(finished); advancePhase(); }
+void PomodoroController::skip() { advancePhase(false); }
 
 void PomodoroController::setDurations(int workMinutes, int shortBreakMinutes, int longBreakMinutes)
 {
@@ -52,9 +52,9 @@ void PomodoroController::setDurations(int workMinutes, int shortBreakMinutes, in
     config.pomodoroWorkMinutes = qBound(1, workMinutes, 180);
     config.pomodoroShortBreakMinutes = qBound(1, shortBreakMinutes, 60);
     config.pomodoroLongBreakMinutes = qBound(1, longBreakMinutes, 120);
+    configManager_->setConfig(config);
     if (!isRunning())
         remainingSeconds_ = durationFor(phase_);
-    configManager_->setConfig(config);
     persist();
     emit tick(remainingSeconds_);
 }
@@ -67,12 +67,15 @@ int PomodoroController::durationFor(Phase phase) const
     return config.pomodoroWorkMinutes * 60;
 }
 
-void PomodoroController::advancePhase()
+void PomodoroController::advancePhase(bool completedNormally)
 {
     resetDailyCount();
     if (phase_ == Phase::Work) {
-        ++completedCycles_;
-        phase_ = (completedCycles_ % 4 == 0) ? Phase::LongBreak : Phase::ShortBreak;
+        if (completedNormally)
+            ++completedCycles_;
+        phase_ = completedNormally && completedCycles_ % 4 == 0
+                     ? Phase::LongBreak
+                     : Phase::ShortBreak;
     } else {
         phase_ = Phase::Work;
     }

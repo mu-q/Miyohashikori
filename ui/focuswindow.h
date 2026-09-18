@@ -31,6 +31,8 @@ public:
 
 signals:
     void recordsRequested();
+    void todosRequested();
+    void settingsRequested();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

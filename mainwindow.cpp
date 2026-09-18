@@ -9,6 +9,7 @@
 #include "core/data/databasemanager.h"
 #include "core/data/journalrepository.h"
 #include "core/data/noterepository.h"
+#include "core/data/todorepository.h"
 #include "core/data/schedulerepository.h"
 #include "core/schedule/courseremindercontroller.h"
 #include "core/spritecatalog.h"
@@ -19,6 +20,8 @@
 #include "ui/focuswindow.h"
 #include "ui/chatlogwindow.h"
 #include "ui/recordswindow.h"
+#include "ui/settingsdialog.h"
+#include "ui/todowindow.h"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -102,6 +105,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     journalRepository_ = std::make_unique<JournalRepository>(databaseManager_.get());
     noteRepository_ = std::make_unique<NoteRepository>(databaseManager_.get());
+    todoRepository_ = std::make_unique<TodoRepository>(databaseManager_.get());
     scheduleRepository_ = std::make_unique<ScheduleRepository>(databaseManager_.get());
     ai_ = new OpenAiChatSession(configManager_, this);
     courseReminder_ = new CourseReminderController(scheduleRepository_.get(), this);
@@ -231,7 +235,6 @@ void MainWindow::wireAiSession()
         lastAssistantText_ = text;
         conversationLog_->addHyori(text);
         setReplyMessage(text);
-        setInputWaiting(false);
     });
     connect(ai_, &IAiSession::assistantSpeech, this, [this](const QString &text) {
         lastAssistantSpeechText_ = text.trimmed();
@@ -241,8 +244,8 @@ void MainWindow::wireAiSession()
     });
     connect(ai_, &IAiSession::sessionError, this, [this](const QString &error) {
         setReplyError(error);
-        setInputWaiting(false);
     });
+    connect(ai_, &IAiSession::busyChanged, this, &MainWindow::setInputWaiting);
     connect(ai_, &IAiSession::assistantEmotion, catalog_, &SpriteCatalog::setEmotion);
     connect(ai_, &IAiSession::assistantEmotion, this, [this](const QString &emotion) {
         configManager_->load();
@@ -479,11 +482,13 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
                    this, &MainWindow::minimizePetToTaskbar);
     menu.addSeparator();
     menu.addAction(QStringLiteral("打开日记与笔记"), this, &MainWindow::openRecordsWindow);
-    menu.addAction(QStringLiteral("本次对话记录"), this, &MainWindow::showChatHistory);
+    menu.addAction(QStringLiteral("打开待办事项"), this, &MainWindow::openTodoWindow);
+    menu.addAction(QStringLiteral("对话记录"), this, &MainWindow::showChatHistory);
     menu.addAction(QStringLiteral("打开专注模式"), this, &MainWindow::openFocusWindow);
     menu.addAction(QStringLiteral("选择背景视频"), this, &MainWindow::chooseBackgroundVideo);
     QAction *clearVideo = menu.addAction(QStringLiteral("清除背景视频"), this, &MainWindow::clearBackgroundVideo);
     clearVideo->setEnabled(!configManager_->config().backgroundVideoPath.isEmpty());
+    menu.addAction(QStringLiteral("设置…"), this, &MainWindow::openSettings);
     menu.addSeparator();
     QMenu *modesMenu = menu.addMenu(QStringLiteral("切换模式"));
     const QStringList names = catalog_->modeNames();
@@ -504,6 +509,14 @@ void MainWindow::showPetMenu(const QPoint &globalPos)
     menu.exec(globalPos);
 }
 
+void MainWindow::openSettings()
+{
+    configManager_->load();
+    SettingsDialog dialog(configManager_, this);
+    if (dialog.exec() == QDialog::Accepted)
+        refreshConfigHint();
+}
+
 void MainWindow::minimizePetToTaskbar()
 {
     persistWindowPosition();
@@ -519,6 +532,15 @@ void MainWindow::openRecordsWindow()
     recordsWindow_->activateWindow();
 }
 
+void MainWindow::openTodoWindow()
+{
+    if (!todoWindow_)
+        todoWindow_ = new TodoWindow(todoRepository_.get(), this);
+    todoWindow_->show();
+    todoWindow_->raise();
+    todoWindow_->activateWindow();
+}
+
 void MainWindow::openFocusWindow()
 {
     if (!focusWindow_) {
@@ -526,6 +548,10 @@ void MainWindow::openFocusWindow()
                                        scheduleRepository_.get(), this);
         connect(focusWindow_, &FocusWindow::recordsRequested,
                 this, &MainWindow::openRecordsWindow);
+        connect(focusWindow_, &FocusWindow::todosRequested,
+                this, &MainWindow::openTodoWindow);
+        connect(focusWindow_, &FocusWindow::settingsRequested,
+                this, &MainWindow::openSettings);
     }
     focusWindow_->show();
     focusWindow_->raise();

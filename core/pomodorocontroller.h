@@ -31,7 +31,7 @@ signals:
 
 private:
     int durationFor(Phase phase) const;
-    void advancePhase();
+    void advancePhase(bool completedNormally);
     void persist() const;
     void resetDailyCount();
     static QString phaseKey(Phase phase);

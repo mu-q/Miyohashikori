@@ -4,6 +4,7 @@
 #include "iaisession.h"
 
 #include <QStringList>
+#include <QQueue>
 class ConfigManager;
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -31,9 +32,13 @@ private:
     void sendRequest(const PendingRequest &request);
     void handleReply(QNetworkReply *reply, PendingRequest request);
     void retryRequest(const PendingRequest &request, const QString &reason);
+    void processNextRequest();
+    void finishCurrentRequest();
 
     QNetworkAccessManager *network_ = nullptr;
     ConfigManager *configManager_ = nullptr;
     ChatHistory history_;
     QStringList shortTermMemory_;
+    QQueue<QString> pendingUserTexts_;
+    bool busy_ = false;
 };

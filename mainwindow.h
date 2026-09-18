@@ -24,9 +24,11 @@ class ChatLogWindow;
 class DatabaseManager;
 class JournalRepository;
 class NoteRepository;
+class TodoRepository;
 class ScheduleRepository;
 class CourseReminderController;
 class RecordsWindow;
+class TodoWindow;
 struct CourseOccurrence;
 
 class MainWindow : public QWidget
@@ -61,6 +63,8 @@ private:
     void chooseBackgroundVideo();
     void clearBackgroundVideo();
     void showChatHistory();
+    void openSettings();
+    void openTodoWindow();
     void handleCourseReminder(const CourseOccurrence &occurrence, int leadMinutes,
                               const QString &displayText, const QString &speechText);
 
@@ -77,6 +81,7 @@ private:
     std::unique_ptr<DatabaseManager> databaseManager_;
     std::unique_ptr<JournalRepository> journalRepository_;
     std::unique_ptr<NoteRepository> noteRepository_;
+    std::unique_ptr<TodoRepository> todoRepository_;
     std::unique_ptr<ScheduleRepository> scheduleRepository_;
     CourseReminderController *courseReminder_ = nullptr;
     IAiSession *ai_ = nullptr;
@@ -85,6 +90,7 @@ private:
     ConversationLog *conversationLog_ = nullptr;
     ChatLogWindow *chatLogWindow_ = nullptr;
     RecordsWindow *recordsWindow_ = nullptr;
+    TodoWindow *todoWindow_ = nullptr;
     FocusWindow *focusWindow_ = nullptr;
     QString lastAssistantText_;
     QString lastAssistantSpeechText_;

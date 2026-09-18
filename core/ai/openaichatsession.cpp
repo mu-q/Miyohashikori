@@ -308,25 +308,55 @@ OpenAiChatSession::OpenAiChatSession(ConfigManager *configManager, QObject *pare
 
 void OpenAiChatSession::submit(const QString &userText)
 {
-    configManager_->load();
-
-    const QString configError = validateLlmConfig(configManager_->config());
-    if (!configError.isEmpty()) {
-        emit sessionError(configError);
-        return;
-    }
-
-    PendingRequest request;
-    request.userText = userText.trimmed();
-    if (request.userText.isEmpty()) {
+    const QString cleaned = userText.trimmed();
+    if (cleaned.isEmpty()) {
         emit sessionError(QStringLiteral("发送内容不能为空。"));
         return;
     }
 
+    pendingUserTexts_.enqueue(cleaned);
+    if (busy_) {
+        emit sessionStatus(QStringLiteral("消息已排队，将在当前回复完成后发送…"));
+        return;
+    }
+    processNextRequest();
+}
+
+void OpenAiChatSession::processNextRequest()
+{
+    if (pendingUserTexts_.isEmpty()) {
+        if (busy_) {
+            busy_ = false;
+            emit busyChanged(false);
+        }
+        return;
+    }
+
+    if (!busy_) {
+        busy_ = true;
+        emit busyChanged(true);
+    }
+
+    configManager_->load();
+    const QString configError = validateLlmConfig(configManager_->config());
+    if (!configError.isEmpty()) {
+        pendingUserTexts_.dequeue();
+        emit sessionError(configError);
+        QTimer::singleShot(0, this, &OpenAiChatSession::processNextRequest);
+        return;
+    }
+
+    PendingRequest request;
+    request.userText = pendingUserTexts_.dequeue();
     updateShortTermMemory(request.userText);
     history_.addUserMessage(request.userText);
     emit sessionStatus(QStringLiteral("正在连接冰织…"));
     sendRequest(request);
+}
+
+void OpenAiChatSession::finishCurrentRequest()
+{
+    QTimer::singleShot(0, this, &OpenAiChatSession::processNextRequest);
 }
 
 QString OpenAiChatSession::buildSystemPrompt() const
@@ -490,6 +520,7 @@ void OpenAiChatSession::handleReply(QNetworkReply *reply, PendingRequest request
     emit assistantEmotion(result.emotion);
 
     reply->deleteLater();
+    finishCurrentRequest();
 }
 
 void OpenAiChatSession::retryRequest(const PendingRequest &request, const QString &reason)
@@ -501,6 +532,7 @@ void OpenAiChatSession::retryRequest(const PendingRequest &request, const QStrin
         emit sessionError(QStringLiteral("AI 请求失败（已重试 %1 次）：%2")
                               .arg(kMaxAttempts - 1)
                               .arg(reason));
+        finishCurrentRequest();
         return;
     }
 

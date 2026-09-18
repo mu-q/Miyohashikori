@@ -8,6 +8,7 @@ QString appDataRoot();
 QString configFilePath();
 QString databaseFilePath();
 QString logsRoot();
+QString conversationHistoryFilePath();
 QString ttsCacheRoot();
 QString assetsRoot();
 QString modesRoot();
