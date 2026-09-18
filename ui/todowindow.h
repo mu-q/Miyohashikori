@@ -57,5 +57,8 @@ private:
     QLabel *messageLabel_ = nullptr;
     QLabel *summaryLabel_ = nullptr;
     QPushButton *deleteButton_ = nullptr;
+    QWidget *titleBar_ = nullptr;
     QString nightStyle_;
+    bool dragging_ = false;
+    QPoint dragOffset_;
 };

@@ -5,6 +5,7 @@
 
 #include <QCheckBox>
 #include <QApplication>
+#include <QAbstractButton>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QDateTimeEdit>
@@ -17,6 +18,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
 #include <QKeyEvent>
@@ -99,7 +101,11 @@ TodoWindow::TodoWindow(TodoRepository *repository)
     panelLayout->setContentsMargins(24, 20, 24, 22);
     panelLayout->setSpacing(16);
 
-    auto *header = new QHBoxLayout;
+    titleBar_ = new QWidget(panel);
+    titleBar_->setObjectName(QStringLiteral("todoTitleBar"));
+    titleBar_->setCursor(Qt::SizeAllCursor);
+    auto *header = new QHBoxLayout(titleBar_);
+    header->setContentsMargins(0, 0, 0, 0);
     auto *heading = new QVBoxLayout;
     heading->setSpacing(3);
     auto *eyebrow = new QLabel(QStringLiteral("FOCUS DESK · 今日清单"), panel);
@@ -119,7 +125,7 @@ TodoWindow::TodoWindow(TodoRepository *repository)
     header->addLayout(heading);
     header->addStretch();
     header->addWidget(closeButton, 0, Qt::AlignTop);
-    panelLayout->addLayout(header);
+    panelLayout->addWidget(titleBar_);
 
     auto *divider = new QFrame(panel);
     divider->setObjectName(QStringLiteral("todoDivider"));
@@ -330,6 +336,34 @@ void TodoWindow::closeEvent(QCloseEvent *event)
 
 bool TodoWindow::eventFilter(QObject *watched, QEvent *event)
 {
+    auto *eventWidget = qobject_cast<QWidget *>(watched);
+    const bool onTitleBar = eventWidget && titleBar_
+        && (eventWidget == titleBar_ || titleBar_->isAncestorOf(eventWidget));
+    const bool onButton = qobject_cast<QAbstractButton *>(eventWidget) != nullptr;
+    if (dragging_ && event->type() == QEvent::MouseMove) {
+        auto *mouse = static_cast<QMouseEvent *>(event);
+        move(mouse->globalPosition().toPoint() - dragOffset_);
+        mouse->accept();
+        return true;
+    }
+    if (dragging_ && event->type() == QEvent::MouseButtonRelease) {
+        dragging_ = false;
+        titleBar_->setCursor(Qt::SizeAllCursor);
+        event->accept();
+        return true;
+    }
+    if (onTitleBar && !onButton) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto *mouse = static_cast<QMouseEvent *>(event);
+            if (mouse->button() == Qt::LeftButton) {
+                dragging_ = true;
+                dragOffset_ = mouse->globalPosition().toPoint() - frameGeometry().topLeft();
+                titleBar_->setCursor(Qt::ClosedHandCursor);
+                mouse->accept();
+                return true;
+            }
+        }
+    }
     if (isVisible() && !QApplication::activeModalWidget()
         && event->type() == QEvent::KeyPress) {
         auto *keyEvent = static_cast<QKeyEvent *>(event);
@@ -438,7 +472,13 @@ void TodoWindow::saveCurrent()
 void TodoWindow::removeCurrent()
 {
     if (currentId_ < 0) return;
-    if (QMessageBox::question(this, QStringLiteral("删除待办"), QStringLiteral("确定删除当前待办吗？")) != QMessageBox::Yes) return;
+    QMessageBox prompt(QMessageBox::Question, QStringLiteral("删除待办"),
+                       QStringLiteral("确定删除当前待办吗？"), QMessageBox::NoButton, this);
+    auto *confirm = prompt.addButton(QStringLiteral("确认删除"), QMessageBox::DestructiveRole);
+    auto *cancel = prompt.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    prompt.setDefaultButton(cancel);
+    prompt.exec();
+    if (prompt.clickedButton() != confirm) return;
     const auto result = repository_->remove(currentId_);
     if (!result.success || !result.value) {
         setStatus(result.success ? QStringLiteral("待办已经不存在") : result.error, true); return;
@@ -450,10 +490,14 @@ void TodoWindow::removeCurrent()
 bool TodoWindow::confirmDiscard()
 {
     if (!dirty_) return true;
-    const auto answer = QMessageBox::question(this, QStringLiteral("放弃修改"),
-        QStringLiteral("当前待办尚未保存，确定放弃修改吗？"),
-        QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Cancel);
-    return answer == QMessageBox::Discard;
+    QMessageBox prompt(QMessageBox::Question, QStringLiteral("放弃修改"),
+                       QStringLiteral("当前待办尚未保存，确定放弃修改吗？"),
+                       QMessageBox::NoButton, this);
+    auto *discard = prompt.addButton(QStringLiteral("放弃修改"), QMessageBox::DestructiveRole);
+    auto *cancel = prompt.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    prompt.setDefaultButton(cancel);
+    prompt.exec();
+    return prompt.clickedButton() == discard;
 }
 
 void TodoWindow::setStatus(const QString &message, bool error)
